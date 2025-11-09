@@ -1,0 +1,8 @@
+mouse_strain,C57BL
+mouse_life_stage,earlyadult
+pvalue,0.462035
+parameter_name,White blood cell count
+analysis_id,NA
+gene_symbol,mgst2
+gene_accession_id,MGI:6738352
+parameter_id,IMPC_HEM_001_001

@@ -1,0 +1,9 @@
+gene_accession_id,MGI:5699163
+mouse_strain,C57 BL
+parameter_id,IMPC_HEM_001_001
+mouse_life_stage,Early adult
+parameter_name,White blood cell count
+parameter_id,IMPC_HEM_001_001_dup
+pvalue,1.1
+analysis_id,fake_03
+gene_symbol,MGST-2

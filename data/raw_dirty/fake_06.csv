@@ -1,0 +1,8 @@
+parameter_id,IMPC_HEM_001_001
+analysis_id,NA
+gene_accession_id,MGI:9022168
+parameter_name,  Early adult  
+mouse_strain,C57bl
+gene_symbol,mgst2
+pvalue,0.993904
+mouse_life_stage,Early adult

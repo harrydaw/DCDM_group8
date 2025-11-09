@@ -1,0 +1,9 @@
+analysis_id,fake_09
+parameter_id,impc_HEM_001_001
+gene_accession_id,MGI:6665715
+parameter_name,White blood cell count
+pvalue,1.1
+mouse_life_stage,Early adult
+mouse_strain,C57bl
+junk,foo
+gene_symbol,mgst2

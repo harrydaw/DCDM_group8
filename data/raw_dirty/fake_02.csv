@@ -1,0 +1,8 @@
+parameter_id,IMPC_HEM_001_001
+mouse_strain,C57BL
+pvalue,not_a_number
+gene_accession_id,MGI:2152923
+mouse_life_stage,earlyadult
+analysis_id,fake_02
+parameter_name,White cell count
+gene_symbol,mgst2
