@@ -26,6 +26,23 @@ norm_value <- function(x) {
   x
 }
 
+# validate pvalue: must be numeric in [0,1]; otherwise set NA and log
+validate_pvalue <- function(rec, issues) {
+  if (is.null(rec$pvalue)) return(list(rec = rec, issues = issues)) # checks if there is no pvalue and ammends issues
+  raw <- rec$pvalue
+  num <- suppressWarnings(as.numeric(raw))
+  bad_num <- is.na(num) & !is.na(raw)
+  oor <- !is.na(num) & (num < 0 | num > 1) # checks if pvalue [0,1]
+  if (isTRUE(bad_num) || isTRUE(oor)) {
+    issues <- c(issues, sprintf("pvalue invalid (%s) -> set NA", raw)) # saves bad pvalue issues
+    rec$pvalue <- NA_real_
+  } else {
+    rec$pvalue <- num
+  }
+  list(rec = rec, issues = issues)
+}
+
+# Start of the big function!
 clean_one_file <- function(in_path, # path to file, REQURED
                            out_csv = NULL, # optional output location
                            out_log = NULL, # optional log output location
@@ -70,6 +87,11 @@ clean_one_file <- function(in_path, # path to file, REQURED
     issues <- c(issues, sprintf("missing keys set NA: %s", paste(missing, collapse = ", ")))
     for (k in missing) rec[[k]] <- NA_character_ # adds an NA to the position of the missing vector
   }
+  
+  # P value validation
+  result <- validate_pvalue(rec,issues)
+  rec <- result$rec # saving outputs 
+  issues <- result$issues
   
   # Build a 1-row data.frame of lists in fixed column order
   row <- as.data.frame(as.list(rec[expected_keys]), stringsAsFactors = FALSE) # creates dataFrame in exact order of expected_keys
