@@ -1,4 +1,4 @@
-# script/clean_all_files.R
+# scripts/clean_all_files.R
 # Batch processor for cleaning multiple files
 
 #sourcing the core cleaning function
@@ -57,7 +57,7 @@ clean_all_files <- function(in_dir = "dat/raw",
   }
   
   # Create summary
-  results_df <- do.call(rbind, lapply(results, as.data.frame))
+  results_df <- do.call(rbind, lapply(results, as.data.frame),stringsAsFactors=FALSE)
   n_success <- sum(results_df$status == "success")
   n_failed <- sum(results_df$status == "failed")
   
@@ -73,8 +73,15 @@ clean_all_files <- function(in_dir = "dat/raw",
     }
   }
   
-  # Return results invisibly
+  # Save processing summary to CSV
+  summary_file <- file.path(out_log_dir, paste0("_SUMMARY_", 
+                                                format(Sys.time(), "%Y%m%d_%H%M%S"), 
+                                                ".csv"))
+  write.csv(results_df, summary_file, row.names = FALSE, na = "")
+  message("\nSummary saved to: ", summary_file)
+  
   invisible(results_df)
-}
+}  
+
                           
 
