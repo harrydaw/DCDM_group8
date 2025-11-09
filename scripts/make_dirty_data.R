@@ -1,17 +1,17 @@
 # scripts/make_dirty_data.R
 
-# Generating 10 deliberately messay IMPC-style CSVs for cleaning tests
-# Each file will contan key-value pairs and random errors
+# Generating 10 deliberately messy IMPC-style CSVs for cleaning tests
+# Each file will contain key-value pairs and random errors
 
 dir.create("data/raw_dirty",recursive = TRUE, showWarnings = FALSE)
 
-# reusibility
+# reproducibility
 set.seed(09102003)
 
 
 for (i in 1:10) {
   # Step 1: Create a normal "valid"-looking record
-  kv = c(
+  kv <- c(
     gene_accession_id = sprintf("MGI:%d", sample(2000000:9999999, 1)),
     gene_symbol       = sample(c("Mgst2", "mgst2", "MGST-2"), 1),
     mouse_strain      = sample(c("C57BL", "C57bl", "C57 BL"), 1),
@@ -23,7 +23,7 @@ for (i in 1:10) {
   )
   
   # Step 2: Randomly choose two error types to inject into each file
-  issues = sample(
+  issues <- sample(
     c("none","missing_key","duplicate_key","unexpected_key","bad_pvalue","spaces","na_text"),
     size = 2, replace = FALSE
   )
@@ -62,4 +62,4 @@ for (i in 1:10) {
   
 }
 
-message("Created 10 messy CSVS in data/raw_dirty")
+message("Created 10 messy CSV files in data/raw_dirty")

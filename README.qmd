@@ -7,10 +7,10 @@ editor: visual
 
 # DCDM Group 8 Project
 
-This repositroy contains scripts and documentation for data, cleaning, database design, and visualisation of IMPC data for the 7BBG1003 coursework.
+This repository contains scripts and documentation for data, cleaning, database design, and visualisation of IMPC data for the 7BBG1003 coursework.
 
 ## Folder structure
 - 'scripts/' - R scripts for data cleaning and processing
 - 'data/' - raw and cleaned data files (not tracked if too large)
-- 'outputs/' - plots and porcessed outputs
+- 'outputs/' - plots and processed outputs
 - 'docs/' - Quarto documents and reports

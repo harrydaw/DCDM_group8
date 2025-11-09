@@ -2,7 +2,7 @@
 # Minimal cleaner for ONE file at a time
 # Steps:
 # - Parse key/value lines
-# - Normalsie keys + values
+# - Normalise keys + values
 # - Keep first duplicate key (log it)
 # - Add missing expected keys as NA
 # - Write a 1-row cleaned CSV and a small log CSV
@@ -13,7 +13,7 @@
 # global substitution (gsub)
 norm_key <- function(x) {
   x <- trimws(tolower(x)) #trimes "white space" from the start or end of the value and makes it all lowercase
-  x <- gsub("[^a-z0-9]+", "_", x) # repleaces any non alpha-num charaters with _
+  x <- gsub("[^a-z0-9]+", "_", x) # repleces any non alpha-num characters with _
   x <- gsub("^_+|_+$", "", x) # removes underscores from the start or end 
   x
 }
@@ -22,13 +22,13 @@ norm_key <- function(x) {
 norm_value <- function(x) {
   if (is.na(x)) return(NA_character_) # if already NA, leave as is
   x <- trimws(x) 
-  if (tolower(x) %in% "na") return(NA_character_) # if someone has types NA in any format, convert to real NA
+  if (tolower(x) == "na") return(NA_character_) # if someone has types NA in any format, convert to real NA
   x
 }
 
 # validate pvalue: must be numeric in [0,1]; otherwise set NA and log
 validate_pvalue <- function(rec, issues) {
-  if (is.null(rec$pvalue)) return(list(rec = rec, issues = issues)) # checks if there is no pvalue and ammends issues
+  if (is.null(rec$pvalue)) return(list(rec = rec, issues = issues)) # checks if there is no pvalue and amends issues
   raw <- rec$pvalue
   num <- suppressWarnings(as.numeric(raw))
   bad_num <- is.na(num) & !is.na(raw)
@@ -43,7 +43,7 @@ validate_pvalue <- function(rec, issues) {
 }
 
 # Start of the big function!
-clean_one_file <- function(in_path, # path to file, REQURED
+clean_one_file <- function(in_path, # path to file, REQUIRED
                            out_csv = NULL, # optional output location
                            out_log = NULL, # optional log output location
                            expected_keys = c( 
@@ -55,10 +55,10 @@ clean_one_file <- function(in_path, # path to file, REQURED
   lines <- readLines(in_path, warn = FALSE)
   if (!length(lines)) stop("File is empty: ", in_path) # stops if file is empty
   
-  # initisalising tracking variables
+  # initialising tracking variables
   issues <- character(0) # no. problems found
   seen <- character(0) # tracks which keys have already been encountered
-  rec <- list() # places to store key:value pairs
+  rec <- list() # places to store key-value pairs
   
   # Parse each line like "key,value" or "key<TAB>value"
   # Turn this into a list of its parts
