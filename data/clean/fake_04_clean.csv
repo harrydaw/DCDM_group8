@@ -1,2 +1,2 @@
 "gene_accession_id","gene_symbol","mouse_strain","mouse_life_stage","parameter_id","pvalue","parameter_name","analysis_id"
-"MGI:5699163","MGST-2","C57 BL","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_03"
+"MGI:3759429","Mgst2","C57BL","Early adult","impc_HEM_001_001",,"White blood cell count","fake_04"

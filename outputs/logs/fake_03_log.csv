@@ -1,2 +1,3 @@
 "file","issue"
 "fake_03.csv","duplicate key ignored: parameter_id"
+"fake_03.csv","pvalue invalid (1.1) -> set NA"
