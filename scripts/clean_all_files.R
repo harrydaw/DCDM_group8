@@ -57,7 +57,7 @@ clean_all_files <- function(in_dir = "dat/raw",
   }
   
   # Create summary
-  results_df <- do.call(rbind, lapply(results, as.data.frame),stringsAsFactors=FALSE)
+  results_df <- do.call(rbind, lapply(results, as.data.frame))
   n_success <- sum(results_df$status == "success")
   n_failed <- sum(results_df$status == "failed")
   
