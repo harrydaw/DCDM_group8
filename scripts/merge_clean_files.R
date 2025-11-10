@@ -1,6 +1,6 @@
 #scripts/merge_clean_files
 
-merge_clean_files <- function(in_dir="data/clean",#
+merge_clean_files <- function(in_dir="data/clean",
                               out_file="data/merged/all_clean_data.csv",
                               pattern="_clean\\.csv$") {
   # checking input directory actually exists
