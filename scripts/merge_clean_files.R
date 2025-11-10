@@ -3,7 +3,7 @@
 merge_clean_files <- function(in_dir="data/clean",#
                               out_file="data/merged/all_clean_data.csv",
                               pattern="_clean\\.csv$") {
-  # checnking input directory actually exists
+  # checking input directory actually exists
   if (!dir.exists(in_dir)) stop("Input directory not found: ", in_dir)
   
   # Find all cleaned CSV files and read them in
@@ -22,7 +22,7 @@ merge_clean_files <- function(in_dir="data/clean",#
   
   for (i in seq_along(files)) {
     file_name <- basename(files[i])
-  
+    file_path <- files[i]
     message("Reading [", i, "/", length(files), "]: ", file_name)
       
       # Read the CSV
@@ -32,6 +32,9 @@ merge_clean_files <- function(in_dir="data/clean",#
       warning("Failed to read ", file_name, ": ", e$message)
       return(NULL)
     })
+    
+    # store successful reads
+    if (!is.null(df)) all_data[[length(all_data) + 1]] <- df
     }
     
   # Remove any NULL entries (failed reads)
