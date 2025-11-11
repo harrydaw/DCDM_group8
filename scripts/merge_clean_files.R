@@ -41,7 +41,7 @@ merge_clean_files <- function(in_dir="data/clean",
   all_data <- all_data[!sapply(all_data, is.null)]
     
   if (length(all_data) == 0) {
-    stop("No files could be successfully read!")
+    stop("No files could be successfully read!") #output for empty directory
     }
     
   # Combine all rows into one data frame
