@@ -23,7 +23,7 @@ merge_clean_files <- function(in_dir="data/clean",
   for (i in seq_along(files)) {
     file_name <- basename(files[i])
     file_path <- files[i]
-    message("Reading [", i, "/", length(files), "]: ", file_name)
+    message("Reading [", i, "/", length(files), "]: ", file_name) # progress bar
       
       # Read the CSV
     df <- tryCatch({
