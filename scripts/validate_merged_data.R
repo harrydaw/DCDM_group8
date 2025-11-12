@@ -36,13 +36,13 @@ parse_allowed_sets = function(sop) {
           allowed[[i]] = vals
           next  # Found it in dedicated column, move to next field
       # E.g.
-         #allowedValues = "C57BL/6; B6J; BALB/c"
-         #allowed[["mouse_strain"]] = c("C57BL/6", "B6J", "BALB/c")
+         #allowedValues = "C57BL; B6J; BALB"
+         #allowed[["mouse_strain"]] = c("C57BL", "B6J", "BALB")
         }
       }
     }
     
-    # More realistic (and for our data) allowedValeus doesn't exist, so checks for specific patterns in "remarks column"
+    # More realistic (and for our data) allowedValues doesn't exist, so checks for specific patterns in "remarks column"
     rm = sop$remarks[i]
     if (is.na(rm) || !nzchar(rm)) next # skip if NA or zero-length
     
@@ -303,6 +303,50 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
  # unexpected_extra_fields,0,None
 }
 
+# Function for standardising values with allowed_sets to the exact matched value
+standardize_categoricals = function(df, allowed_sets) {
+  if (!length(allowed_sets)) return(df)
+  
+  corrections_made = 0
+  
+  for (fld in names(allowed_sets)) {
+    if (!fld %in% names(df)) next # if the field is not in our row, move on
+    
+    x = df[[fld]]
+    allowed = allowed_sets[[fld]] # the specific allowed set for our current field
+    
+    #Create lookup: normalised version -> proper version
+    lookup = setNames(allowed, norm_value(allowed)) 
+    
+    #For each value in our data, find its standardised match
+    for (i in seq_along(x)) {
+      if (is.na(x[i])) next  # Skip NA values
+      
+      normalised = norm_value(x[i])
+      
+      # If we find a match, replace with the proper standardised value
+      if (normalised %in% names(lookup)) {
+        if (x[i] != lookup[[normalised]]) {  # Only if it's actually different to save resources
+          message(sprintf("  Standardizing '%s' -> '%s' in field '%s', row %d", 
+                          x[i], lookup[[normalised]], fld, i))
+          df[[fld]][i] = lookup[[normalised]]
+          corrections_made = corrections_made + 1 # log the change
+        }
+      }
+    }
+  }
+  
+  if (corrections_made > 0) {
+    message(sprintf("\nTotal corrections made: %d", corrections_made))
+  } else {
+    message("\nNo standardisation corrections needed")
+  }
+  
+  df
+}
+
+
+
 # ==================================
 # FINALLY the main function
 # ==================================
@@ -352,6 +396,10 @@ validate_cleaned = function(
   } else {
     message("No allowed values found.")
   }
+ 
+   message("\nStandardising categorical values...")
+  df = standardize_categoricals(df, allowed_sets)
+  
   message("\nValidating categorical values...")
   cat_report = validate_allowed_sets(df, allowed_sets)
   if (!is.null(cat_report)) {
@@ -360,6 +408,13 @@ validate_cleaned = function(
   } else {
     message("-- No categorical violations found")
   }
+  
+  #Save the corrected data
+  message("\nSaving standardized data...")
+  corrected_path = sub("\\.csv$", "_standardized.csv", cleaned_path)
+  write.csv(df, corrected_path, row.names = FALSE, na = "")
+  message("-- Successfully wrote: ", corrected_path)
+  
   # We have now:
   # - Parsed allowed values
   # - Validated categorical values
