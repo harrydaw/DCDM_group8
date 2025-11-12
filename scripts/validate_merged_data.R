@@ -49,10 +49,10 @@ parse_allowed_sets = function(sop) {
     # List of some realistic syntaxes for remarks
     # (?i) means case-insenitive search
     patterns = c(
-      "(?i)values\\s+are\\s*:?\\s*(.*)$",        # "Values are:" or "values are"
-      "(?i)allowed\\s+values\\s*:?\\s*(.*)$",    # "Allowed values:"
-      "(?i)valid\\s+values\\s*:?\\s*(.*)$",      # "Valid values:"
-      "(?i)permitted\\s+values\\s*:?\\s*(.*)$"   # "Permitted values:"
+      "(?i)*values\\s+are\\s*:?\\s*(.*)$",        # "Values are:" or "values are"
+      "(?i)*allowed\\s+values\\s*:?\\s*(.*)$",    # "Allowed values:"
+      "(?i)*valid\\s+values\\s*:?\\s*(.*)$",      # "Valid values:"
+      "(?i)*permitted\\s+values\\s*:?\\s*(.*)$"   # "Permitted values:"
     )
     
    # checks through each row to see if any of the patterns exist at the end of the remark
@@ -176,6 +176,10 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
   if (!is.null(cat_report)) {
     fields_with_cat_issues = length(unique(cat_report$field)) # saves all unique issues
   }
+  
+  # Count total violations
+  total_type_violations = sum(type_range_report$value, na.rm = TRUE)
+  total_cat_violations = if (!is.null(cat_report)) nrow(cat_report) else 0
   
   # Count rows with ANY violation
   problematic_rows = integer(0)
@@ -341,16 +345,12 @@ validate_cleaned = function(
   }
   
   message("======================================\n")
-  
-  invisible(list(
-    types_ranges = type_range_report, 
-    categoricals = cat_report,
-    summary = summary_report
-  ))
 }
 
+test_sop_path = "data/IMPC_SOP.csv"
+file.exists(test_sop_path)
 
-
+readLines(test_sop_path,  n=2)
 
 
 
