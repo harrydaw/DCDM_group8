@@ -41,8 +41,13 @@ validate_pvalue <- function(rec, issues) {
   }
   list(rec = rec, issues = issues)
 }
+# Simple title case function
+tc <- function(x) ifelse(is.na(x), x, tools::toTitleCase(tolower(x)))
 
+
+# ===============================
 # Start of the big function!
+# ================================
 clean_one_file <- function(in_path, # path to file, REQUIRED
                            out_csv = NULL, # optional output location
                            out_log = NULL, # optional log output location
@@ -95,6 +100,39 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   # Build a 1-row data.frame of lists in fixed column order
   row <- as.data.frame(as.list(rec[expected_keys]), stringsAsFactors = FALSE) # creates dataFrame in exact order of expected_keys
+  
+  # ============= Canonicalisation (hard coded) ==============================
+  if ("mouse_strain" %in% names(row)) {
+    # collapse internal spaces only; keep slashes (e.g. C57BL)
+    row$mouse_strain = gsub("\\s+", "", row$mouse_strain)
+  }
+  
+  if ("gene_accession_id" %in% names(row)) {
+    # uppercase letters, keep digits/colons (e.g. MGI:12345)
+    row$gene_accession_id = toupper(row$gene_accession_id)
+  }
+  
+  if ("gene_symbol" %in% names(row)) {
+    # title casing gene symbol (e.g. Satb2)
+    row$gene_symbol = tc(row$gene_symbol)
+  }
+  
+  if ("mouse_life_stage" %in% names(row)) {
+    # title casing mouse life stage (e.g. Early adult)
+    row$mouse_life_stage = tc(row$mouse_life_stage)
+  }
+  
+  if ("parameter_id" %in% names(row)) {
+    # upper casijng param ID (e.g. IMPC_GRS_009_001)
+    row$parameter_id = toupper(row$parameter_id)
+  }
+  
+  if ("parameter_name" %in% names(row)) {
+    # title casing parameter name (e.g. Forelimb and hindlimb grip strength measurement mean)
+    row$parameter_name = tc(row$parameter_name)
+  }
+  
+  # ===================================================================
   
   # Default output paths
   base <- tools::file_path_sans_ext(basename(in_path)) # takes filename without path or extension

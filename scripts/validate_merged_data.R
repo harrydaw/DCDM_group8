@@ -337,13 +337,13 @@ validate_cleaned = function(
   message("KEY FINDINGS!")
   message("======================================")
   
-  # Grabbing specific numbers from the summary report by searchnig though $metric
+  # Grabbing specific numbers from the summary report by searching though $metric
   pct_clean = summary_report$value[summary_report$metric == "percent_rows_clean"]
   rows_issues = summary_report$value[summary_report$metric == "rows_with_violations"]
   total_violations = summary_report$value[summary_report$metric == "total_type_range_violations"] +
     summary_report$value[summary_report$metric == "total_categorical_violations"]
   
-  # COncise print outs
+  # Concise print outs
   message(sprintf("Data Quality: %.1f%% of rows are clean", pct_clean)) # sprint f allows for text formatting
   message(sprintf("Total Violations: %d", total_violations))            # %.1f%% = 1 decimal place
   message(sprintf("Rows with Issues: %d / %d", rows_issues, nrow(df)))  # %d = integer  rows with issues(int) / number of rows(int)
