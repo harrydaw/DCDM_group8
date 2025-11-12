@@ -164,7 +164,36 @@ validate_allowed_sets = function(df, allowed_sets) {
   do.call(rbind, rows)  # Save all of the bad values as one big data frame
 }
 
-# Little summary function of previous steps
+# Extra function for indexing rows with type/range issues
+rows_with_type_range_issues = function(df, sop) {
+  index = integer(0)
+  for (i in seq_len(nrow(sop))) {
+    fld   = sop$dataField[i]
+    dtype = tolower(sop$dataType[i])
+    minv  = sop$minValue[i]
+    maxv  = sop$maxValue[i]
+    if (!fld %in% names(df)) next
+    
+    col = df[[fld]]
+    
+    if (dtype == "float") {
+      num = suppressWarnings(as.numeric(col))
+      bad = (is.na(num) & !is.na(col)) | (!is.na(num) & (num < minv | num > maxv))
+      index = union(index, which(bad))
+    } else if (dtype == "string") {
+      col_chr = ifelse(is.na(col), "", as.character(col))
+      L = nchar(col_chr, type = "chars", allowNA = FALSE, keepNA = FALSE)
+      bad = (L < minv & col_chr != "") | (L > maxv) | (col_chr == "")
+      index = union(index, which(bad))
+    } else {
+      next
+    }
+  }
+  index
+}
+
+
+# Summary function of previous steps
 generate_summary = function(df, type_range_report, cat_report, sop) { 
   total_rows = nrow(df)
   total_fields = ncol(df)
@@ -183,10 +212,19 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
   
   # Count rows with ANY violation
   problematic_rows = integer(0)
-  if (!is.null(cat_report)) { # prevents error resulting from getting stuck trying to search on a NULL object
-    problematic_rows = unique(cat_report$row_index) # saves all unique row failures
-  }                                                 # doesn't accidentally save two invalid rows, if one row failed twice
-  rows_with_issues = length(problematic_rows)
+  
+  #rows failing categorical checks
+  if (!is.null(cat_report)) {
+    problematic_rows <- unique(cat_report$row_index)
+  }
+  
+  #rows failing type/range/length checks
+  problematic_rows <- unique(c(
+    problematic_rows,
+    rows_with_type_range_issues(df, sop)
+  ))
+  
+  rows_with_issues <- length(problematic_rows)
   
   # Calculate percentages
   pct_rows_clean = round(100 * (total_rows - rows_with_issues) / total_rows, 2) # round percentage of clean rows to two digits
@@ -264,6 +302,7 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
  # missing_expected_fields,1,mouse_strain
  # unexpected_extra_fields,0,None
 }
+
 # ==================================
 # FINALLY the main function
 # ==================================
