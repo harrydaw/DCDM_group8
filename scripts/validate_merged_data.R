@@ -266,7 +266,7 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
 
 validate_cleaned = function(
     cleaned_path = "data/merged/all_clean_data.csv",     # Sensible defaults
-    sop_path     = "docs/IMPC_SOP.csv",
+    sop_path     = "data/IMPC_SOP.csv",
     out_types    = "outputs/validation_types_ranges.csv",
     out_cats     = "outputs/validation_categoricals.csv",
     out_summary  = "outputs/validation_summary.csv" 
