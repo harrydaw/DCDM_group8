@@ -42,7 +42,13 @@ validate_pvalue <- function(rec, issues) {
   list(rec = rec, issues = issues)
 }
 # Simple title case function
-tc <- function(x) ifelse(is.na(x), x, tools::toTitleCase(tolower(x)))
+cap_first = function(x) {
+  ifelse(
+    is.na(x) | x == "",
+    x,
+    paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
+  )
+}
 
 
 # ===============================
@@ -114,12 +120,12 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   if ("gene_symbol" %in% names(row)) {
     # title casing gene symbol (e.g. Satb2)
-    row$gene_symbol = tc(row$gene_symbol)
+    row$gene_symbol = cap_first(row$gene_symbol)
   }
   
   if ("mouse_life_stage" %in% names(row)) {
     # title casing mouse life stage (e.g. Early adult)
-    row$mouse_life_stage = tc(row$mouse_life_stage)
+    row$mouse_life_stage = cap_first(row$mouse_life_stage)
   }
   
   if ("parameter_id" %in% names(row)) {
@@ -129,7 +135,7 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   if ("parameter_name" %in% names(row)) {
     # title casing parameter name (e.g. Forelimb and hindlimb grip strength measurement mean)
-    row$parameter_name = tc(row$parameter_name)
+    row$parameter_name = cap_first(row$parameter_name)
   }
   
   # ===================================================================

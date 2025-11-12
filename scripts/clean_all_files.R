@@ -6,7 +6,7 @@
 source("scripts/clean_one_file.R")
 
 # Clean all files in a folder
-clean_all_files <- function(in_dir = "dat/raw",
+clean_all_files <- function(in_dir = "data/raw",
                             out_csv_dir = "data/clean",
                             out_log_dir = "outputs/logs",
                             pattern = "\\.csv$",
