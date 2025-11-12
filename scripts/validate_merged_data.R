@@ -301,8 +301,18 @@ validate_cleaned = function(
   # Allowed sets (parsed from allowedValues or Remarks column)
   message("\nParsing allowed value sets from SOP...")
   allowed_sets = parse_allowed_sets(sop)
-  message("Allowed values found:\n",allowed_sets)
   
+  # Print allowed value sets for each key
+  if (length(allowed_sets)) {
+    message("Allowed values found:")
+    for (fld in names(allowed_sets)) {
+      vals <- paste(head(allowed_sets[[fld]], 5), collapse = ", ")
+      if (length(allowed_sets[[fld]]) > 5) vals <- paste0(vals, ", ...")
+      message("  - ", fld, ": ", vals)
+    }
+  } else {
+    message("No allowed values found.")
+  }
   message("\nValidating categorical values...")
   cat_report = validate_allowed_sets(df, allowed_sets)
   if (!is.null(cat_report)) {
@@ -346,11 +356,6 @@ validate_cleaned = function(
   
   message("======================================\n")
 }
-
-test_sop_path = "data/IMPC_SOP.csv"
-file.exists(test_sop_path)
-
-readLines(test_sop_path,  n=2)
 
 
 
