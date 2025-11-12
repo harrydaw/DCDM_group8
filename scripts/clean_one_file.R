@@ -120,12 +120,12 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   if ("gene_symbol" %in% names(row)) {
     # title casing gene symbol (e.g. Satb2)
-    row$gene_symbol = cap_first(row$gene_symbol)
+    row$gene_symbol = cap_first(tolower(row$gene_symbol))
   }
   
   if ("mouse_life_stage" %in% names(row)) {
     # title casing mouse life stage (e.g. Early adult)
-    row$mouse_life_stage = cap_first(row$mouse_life_stage)
+    row$mouse_life_stage = cap_first(tolower(row$mouse_life_stage))
   }
   
   if ("parameter_id" %in% names(row)) {
@@ -135,7 +135,7 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   if ("parameter_name" %in% names(row)) {
     # title casing parameter name (e.g. Forelimb and hindlimb grip strength measurement mean)
-    row$parameter_name = cap_first(row$parameter_name)
+    row$parameter_name = cap_first(tolower(row$parameter_name))
   }
   
   # ===================================================================

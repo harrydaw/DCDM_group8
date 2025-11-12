@@ -1,11 +1,11 @@
 "gene_accession_id","gene_symbol","mouse_strain","mouse_life_stage","parameter_id","pvalue","parameter_name","analysis_id"
-"MGI:4386727","Mgst2","C57BL","earlyadult","IMPC_HEM_001_001",0.158519,"White cell count","fake_01"
-"MGI:2152923","mgst2","C57BL","earlyadult","IMPC_HEM_001_001",,"White cell count","fake_02"
-"MGI:5699163","MGST-2","C57 BL","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_03"
-"MGI:3759429","Mgst2","C57BL","Early adult","impc_HEM_001_001",,"White blood cell count","fake_04"
+"MGI:4386727","Mgst2","C57BL","Earlyadult","IMPC_HEM_001_001",0.158519,"White cell count","fake_01"
+"MGI:2152923","Mgst2","C57BL","Earlyadult","IMPC_HEM_001_001",,"White cell count","fake_02"
+"MGI:5699163","Mgst-2","C57BL","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_03"
+"MGI:3759429","Mgst2","C57BL","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_04"
 "MGI:7619454","Mgst2","C57bl","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_05"
-"MGI:9022168","mgst2","C57bl","Early adult","IMPC_HEM_001_001",0.993904,"Early adult",
-"MGI:3496823",,"C57BL","earlyadult",,0.894635,"White blood cell count","fake_07"
-"MGI:3722049","Mgst2","C57BL","earlyadult","IMPC_HEM_001_001",0.942981,"White cell count","fake_08"
-"MGI:6665715","mgst2","C57bl","Early adult","impc_HEM_001_001",,"White blood cell count","fake_09"
-"MGI:6738352","mgst2","C57BL","earlyadult","IMPC_HEM_001_001",0.462035,"White blood cell count",
+"MGI:9022168","Mgst2","C57bl","Early adult","IMPC_HEM_001_001",0.993904,"Early adult",
+"MGI:3496823",,"C57BL","Earlyadult",,0.894635,"White blood cell count","fake_07"
+"MGI:3722049","Mgst2","C57BL","Earlyadult","IMPC_HEM_001_001",0.942981,"White cell count","fake_08"
+"MGI:6665715","Mgst2","C57bl","Early adult","IMPC_HEM_001_001",,"White blood cell count","fake_09"
+"MGI:6738352","Mgst2","C57BL","Earlyadult","IMPC_HEM_001_001",0.462035,"White blood cell count",
