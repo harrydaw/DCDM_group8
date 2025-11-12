@@ -49,10 +49,10 @@ parse_allowed_sets = function(sop) {
     # List of some realistic syntaxes for remarks
     # (?i) means case-insenitive search
     patterns = c(
-      "(?i)*values\\s+are\\s*:?\\s*(.*)$",        # "Values are:" or "values are"
-      "(?i)*allowed\\s+values\\s*:?\\s*(.*)$",    # "Allowed values:"
-      "(?i)*valid\\s+values\\s*:?\\s*(.*)$",      # "Valid values:"
-      "(?i)*permitted\\s+values\\s*:?\\s*(.*)$"   # "Permitted values:"
+      "(?i).*values\\s+are\\s*:?\\s*(.*)$",        # "Values are:" or "values are"
+      "(?i).*allowed\\s+values\\s*:?\\s*(.*)$",    # "Allowed values:"
+      "(?i).*valid\\s+values\\s*:?\\s*(.*)$",      # "Valid values:"
+      "(?i).*permitted\\s+values\\s*:?\\s*(.*)$"   # "Permitted values:"
     )
     
    # checks through each row to see if any of the patterns exist at the end of the remark
