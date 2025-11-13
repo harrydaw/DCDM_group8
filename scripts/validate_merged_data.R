@@ -304,10 +304,11 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
 }
 
 # Function for standardising values with allowed_sets to the exact matched value
-standardize_categoricals = function(df, allowed_sets) {
+standardise_categoricals = function(df, allowed_sets) {
   if (!length(allowed_sets)) return(df)
   
   corrections_made = 0
+  corrections_log = list() # setup to track changes
   
   for (fld in names(allowed_sets)) {
     if (!fld %in% names(df)) next # if the field is not in our row, move on
@@ -327,9 +328,19 @@ standardize_categoricals = function(df, allowed_sets) {
       # If we find a match, replace with the proper standardised value
       if (normalised %in% names(lookup)) {
         if (x[i] != lookup[[normalised]]) {  # Only if it's actually different to save resources
-          message(sprintf("  Standardizing '%s' -> '%s' in field '%s', row %d", 
+          message(sprintf("  Standardising '%s' -> '%s' in field '%s', row %d", 
                           x[i], lookup[[normalised]], fld, i))
-          df[[fld]][i] = lookup[[normalised]]
+          
+          # Logging any corrections made
+          corrections_log[[length(corrections_log)+1]] = data.frame(
+            field = fld,
+            row_index = i,
+            original_value = x[i],
+            standardised_value = lookup[[normalised]],
+            stringsAsFactors = FALSE
+          )
+        
+           df[[fld]][i] = lookup[[normalised]]
           corrections_made = corrections_made + 1 # log the change
         }
       }
@@ -342,10 +353,23 @@ standardize_categoricals = function(df, allowed_sets) {
     message("\nNo standardisation corrections needed")
   }
   
-  df
+  list(df = df, log = corrections_log)
 }
 
-
+#Generate normalisation summary report
+generate_normalisation_summary = function(corrections_log) {
+  if (length(corrections_log) == 0) {
+    return(data.frame(
+      field = character(0),
+      row_index = integer(0),
+      original_value = character(0),
+      standardised_value = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  do.call(rbind, corrections_log)
+}
 
 # ==================================
 # FINALLY the main function
@@ -397,8 +421,17 @@ validate_cleaned = function(
     message("No allowed values found.")
   }
  
-   message("\nStandardising categorical values...")
-  df = standardize_categoricals(df, allowed_sets)
+  message("\nStandardising categorical values...")
+  standardisation_result = standardise_categoricals(df, allowed_sets)
+  df = standardisation_result$df
+  
+  #Save normalisation summary
+  norm_summary = generate_normalisation_summary(standardisation_result$log)
+  if (nrow(norm_summary) > 0) {
+    norm_summary_path = "outputs/normalization_summary.csv"
+    write.csv(norm_summary, norm_summary_path, row.names = FALSE, na = "")
+    message("-- Successfully wrote: ", norm_summary_path)
+  }
   
   message("\nValidating categorical values...")
   cat_report = validate_allowed_sets(df, allowed_sets)
@@ -410,8 +443,8 @@ validate_cleaned = function(
   }
   
   #Save the corrected data
-  message("\nSaving standardized data...")
-  corrected_path = sub("\\.csv$", "_standardized.csv", cleaned_path)
+  message("\nSaving standardised data...")
+  corrected_path = sub("\\.csv$", "_standardised.csv", cleaned_path)
   write.csv(df, corrected_path, row.names = FALSE, na = "")
   message("-- Successfully wrote: ", corrected_path)
   
