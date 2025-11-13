@@ -428,7 +428,7 @@ validate_cleaned = function(
   #Save normalisation summary
   norm_summary = generate_normalisation_summary(standardisation_result$log)
   if (nrow(norm_summary) > 0) {
-    norm_summary_path = "outputs/normalization_summary.csv"
+    norm_summary_path = "outputs/normalisation_summary.csv"
     write.csv(norm_summary, norm_summary_path, row.names = FALSE, na = "")
     message("-- Successfully wrote: ", norm_summary_path)
   }
