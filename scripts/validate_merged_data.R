@@ -18,7 +18,7 @@ read_sop = function(sop_path){
 
 # Here comes the "allowedValues" parsing
 parse_allowed_sets = function(sop) {
-  allowed = vector("list", nrow(sop)) # creates an empty list to store alloed values if they are found
+  allowed = vector("list", nrow(sop)) # creates an empty list to store allowed values if they are found
   names(allowed) = sop$dataField
   
   # Check if there's a dedicated allowed Values column
