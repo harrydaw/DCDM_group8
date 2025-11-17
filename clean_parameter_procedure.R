@@ -292,7 +292,5 @@ clean_procedures = function(
   message(sprintf("Input:  %d rows", n_in))
   message(sprintf("Output: %d rows (%.1f%% retained)", n_out, 100 * n_out / n_in))
   message("================\n")
-  
-  invisible(df)
 }
 ```
