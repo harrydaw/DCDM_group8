@@ -8,12 +8,12 @@
 # - Trim whitespace, normalise IDs, optional title-casing names
 # - Drop rows with missing IDs
 # - Collapse duplicates by ID (keep first), log counts
-# - Output clean CSVs + brief logs
 
-#  Shared helpers 
-#==============================
-# just capitalised the first letter of the string
-cap_first = function(x) { 
+# ============================
+# Shared helpers
+# ============================
+
+cap_first = function(x) {
   ifelse(
     is.na(x) | x == "",
     x,
@@ -21,31 +21,31 @@ cap_first = function(x) {
   )
 }
 
-# trims whitespace from character values
 trim_char_cols = function(df) {
   is_char = vapply(df, is.character, logical(1))
   df[is_char] = lapply(df[is_char], trimws)
   df
 }
 
-# new function to write logs
 .write_log = function(log_df, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   write.csv(log_df, path, row.names = FALSE, na = "")
 }
 
-# Start of real fucntions
-# ===========================================
+# ============================
+# 1. Parameter descriptions
+# ============================
+
 clean_parameter_descriptions = function(
-    in_path    = "data/IMPC_parameter_description.txt",
-    out_path   = "data/clean/IMPC_parameter_description_clean.csv",
-    log_path   = "outputs/logs/IMPC_parameter_description_clean_log.csv",
-    sep        = "\t",
-    titlecase_names = TRUE # optional in case you want to maintain formatting
+    in_path        = "IMPC_parameter_description.txt",
+    out_path       = "data/clean/IMPC_parameter_description_clean.csv",
+    log_path       = "outputs/logs/IMPC_parameter_description_clean_log.csv",
+    sep            = ",",
+    titlecase_names = TRUE # option to keep exact original formatting
 ) {
   if (!file.exists(in_path)) stop("Parameter description file not found: ", in_path)
   
-  message("\nCleaning parameter descriptions:")
+  message("\n Cleaning parameter descriptions")
   message("Reading: ", in_path)
   
   raw = tryCatch(
@@ -65,13 +65,12 @@ clean_parameter_descriptions = function(
   
   if (!nrow(raw)) stop("Parameter description file has zero rows: ", in_path)
   
-  # Basic trimming on all character columns
   df = trim_char_cols(raw)
   
-  # Check for key columns
-  key_col  = "parameter_id"
-  name_col = "parameter_name"
-  proc_col = "procedure_id"
+  # Columns actually present:
+  # impcParameterOrigId, name, description, parameterId
+  key_col  = "parameterId"  # join key to cleaned TRE data
+  name_col = "name"
   
   missing_key_cols = setdiff(key_col, names(df))
   if (length(missing_key_cols)) {
@@ -80,12 +79,9 @@ clean_parameter_descriptions = function(
   }
   
   # Canonicalise IDs
-  df[[key_col]]  = toupper(df[[key_col]])
-  if (proc_col %in% names(df)) {
-    df[[proc_col]] = toupper(df[[proc_col]])
-  }
+  df[[key_col]] = toupper(df[[key_col]])
   
-  # Optional: nicer naming for readability
+  # Optional title-casing of parameter name
   if (titlecase_names && name_col %in% names(df)) {
     df[[name_col]] = cap_first(tolower(df[[name_col]]))
   }
@@ -94,18 +90,15 @@ clean_parameter_descriptions = function(
   n_in          = nrow(df)
   n_missing_key = sum(is.na(df[[key_col]]) | df[[key_col]] == "")
   
-  # Drop rows missing the primary key
+  # Drop rows missing parameterId
   if (n_missing_key > 0) {
     message("Dropping ", n_missing_key, " rows with missing ", key_col)
     df = df[!(is.na(df[[key_col]]) | df[[key_col]] == ""), , drop = FALSE]
   }
   
-  # Safety check - ensure rows remain after dropping
-  if (nrow(df) == 0) {
-    stop("No valid rows remaining after dropping missing ", key_col)
-  }
+  if (nrow(df) == 0) stop("No valid rows remaining after dropping missing ", key_col)
   
-  # Collapse duplicates on parameter_id, keeping first
+  # Collapse duplicates on parameterId (keep first)
   dup_idx = duplicated(df[[key_col]])
   n_dup   = sum(dup_idx)
   
@@ -113,13 +106,12 @@ clean_parameter_descriptions = function(
     dup_pct = round(100 * n_dup / n_in, 1)
     message("Collapsing ", n_dup, " duplicate ", key_col, " entries (", dup_pct, "% of input)")
     
-    # Warning if high duplicate rate
     if (dup_pct > 10) {
-      warning("High duplicate rate (", dup_pct, "%) - verify input data quality")
+      warning("High duplicate rate (", dup_pct, "%) - verify IMPC_parameter_description.txt")
     }
     
-    # NEW: Log which IDs were duplicated
-    dup_ids = df[[key_col]][dup_idx]
+    # log which IDs were duplicated
+    dup_ids    = df[[key_col]][dup_idx]
     dup_counts = table(dup_ids)
     dup_log_path = sub("\\.csv$", "_duplicates.csv", log_path)
     dup_log_df = data.frame(
@@ -144,8 +136,8 @@ clean_parameter_descriptions = function(
   log_df = data.frame(
     metric = c(
       "rows_input",
-      "rows_missing_parameter_id_dropped",
-      "duplicate_parameter_id_collapsed",
+      "rows_missing_parameterId_dropped",
+      "duplicate_parameterId_collapsed",
       "rows_output"
     ),
     value = c(
@@ -159,7 +151,6 @@ clean_parameter_descriptions = function(
   .write_log(log_df, log_path)
   message("Log written to: ", log_path)
   
-  # Summary message
   message("\n=== Summary ===")
   message(sprintf("Input:  %d rows", n_in))
   message(sprintf("Output: %d rows (%.1f%% retained)", n_out, 100 * n_out / n_in))
@@ -168,13 +159,16 @@ clean_parameter_descriptions = function(
   invisible(df)
 }
 
+# ============================
+# 2. Procedures
+# ============================
 
 clean_procedures = function(
-    in_path   = "data/IMPC_procedure.txt",
-    out_path  = "data/clean/IMPC_procedure_clean.csv",
-    log_path  = "outputs/logs/IMPC_procedure_clean_log.csv",
-    sep       = "\t",
-    titlecase_names = TRUE  # option agian if you want to maintain exact formatting
+    in_path        = "IMPC_procedure.txt",
+    out_path       = "data/clean/IMPC_procedure_clean.csv",
+    log_path       = "outputs/logs/IMPC_procedure_clean_log.csv",
+    sep            = ",",
+    titlecase_names = TRUE
 ) {
   if (!file.exists(in_path)) stop("Procedure file not found: ", in_path)
   
@@ -200,9 +194,10 @@ clean_procedures = function(
   
   df = trim_char_cols(raw)
   
-  # Key columns (adjust if your actual names differ)
-  key_col  = "procedure_id"
-  name_col = "procedure_name"
+  # Actual columns:
+  # name, description, isMandatory, impcParameterOrigId
+  key_col  = "impcParameterOrigId"   # unique per parameter within procedure
+  name_col = "name"                  # procedure name
   
   missing_key_cols = setdiff(key_col, names(df))
   if (length(missing_key_cols)) {
@@ -210,10 +205,10 @@ clean_procedures = function(
          paste(missing_key_cols, collapse = ", "))
   }
   
-  # Canonicalise IDs
-  df[[key_col]] = toupper(df[[key_col]])
+  # Canonicalise numeric ID column as character (for easier joining)
+  df[[key_col]] = as.character(df[[key_col]])
   
-  # Optional: nicer naming
+  # Optional: titlecase procedure name
   if (titlecase_names && name_col %in% names(df)) {
     df[[name_col]] = cap_first(tolower(df[[name_col]]))
   }
@@ -222,18 +217,14 @@ clean_procedures = function(
   n_in          = nrow(df)
   n_missing_key = sum(is.na(df[[key_col]]) | df[[key_col]] == "")
   
-  # Drop rows missing key
   if (n_missing_key > 0) {
     message("Dropping ", n_missing_key, " rows with missing ", key_col)
     df = df[!(is.na(df[[key_col]]) | df[[key_col]] == ""), , drop = FALSE]
   }
   
-  # Safety check
-  if (nrow(df) == 0) {
-    stop("No valid rows remaining after dropping missing ", key_col)
-  }
+  if (nrow(df) == 0) stop("No valid rows remaining after dropping missing ", key_col)
   
-  # Collapse duplicates
+  # Collapse duplicates on impcParameterOrigId (should be rare if data is sane)
   dup_idx = duplicated(df[[key_col]])
   n_dup   = sum(dup_idx)
   
@@ -241,13 +232,11 @@ clean_procedures = function(
     dup_pct = round(100 * n_dup / n_in, 1)
     message("Collapsing ", n_dup, " duplicate ", key_col, " entries (", dup_pct, "% of input)")
     
-    # Warn if high duplicate rate
     if (dup_pct > 10) {
-      warning("High duplicate rate (", dup_pct, "%) - verify input data quality")
+      warning("High duplicate rate (", dup_pct, "%) - verify IMPC_procedure.txt")
     }
     
-    #Log which IDs were duplicated
-    dup_ids = df[[key_col]][dup_idx]
+    dup_ids    = df[[key_col]][dup_idx]
     dup_counts = table(dup_ids)
     dup_log_path = sub("\\.csv$", "_duplicates.csv", log_path)
     dup_log_df = data.frame(
@@ -263,17 +252,15 @@ clean_procedures = function(
   
   n_out = nrow(df)
   
-  # Write cleaned table
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
   write.csv(df, out_path, row.names = FALSE, na = "")
   message("Clean procedures written to: ", out_path)
   
-  # Log summary
   log_df = data.frame(
     metric = c(
       "rows_input",
-      "rows_missing_procedure_id_dropped",
-      "duplicate_procedure_id_collapsed",
+      "rows_missing_impcParameterOrigId_dropped",
+      "duplicate_impcParameterOrigId_collapsed",
       "rows_output"
     ),
     value = c(
@@ -287,10 +274,8 @@ clean_procedures = function(
   .write_log(log_df, log_path)
   message("Log written to: ", log_path)
   
-  #Summary message
   message("\n=== Summary ===")
   message(sprintf("Input:  %d rows", n_in))
   message(sprintf("Output: %d rows (%.1f%% retained)", n_out, 100 * n_out / n_in))
   message("================\n")
 }
-```
