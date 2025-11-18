@@ -109,7 +109,7 @@ clean_one_file <- function(in_path, # path to file, REQUIRED
   
   # ============= Canonicalisation (hard coded) ==============================
   if ("mouse_strain" %in% names(row)) {
-    # collapse internal spaces only; keep slashes (e.g. C57BL)
+    # collapse internal spaces only
     row$mouse_strain = gsub("\\s+", "", row$mouse_strain)
   }
   
