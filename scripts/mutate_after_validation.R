@@ -9,7 +9,7 @@
 source("scripts/validate_merged_data.R")  # reuse read_sop, validate_*, generate_summary, etc.
 
 mutate_after_validation = function(
-    standardised_path   = "data/merged/all_clean_data_standardised.csv",
+    standardised_path   = "data/merged/all_clean_data__hpc_standardised.csv",
     sop_path            = "data/IMPC_SOP.csv",
     types_path          = "outputs/validation_types_ranges.csv",
     cats_path           = "outputs/validation_categoricals.csv",
