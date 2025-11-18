@@ -1,13 +1,15 @@
 #scripts/merge_clean_files
 
-merge_clean_files <- function(in_dir="data/clean",
+merge_clean_files = function(in_dir="data/clean",
                               out_file="data/merged/all_clean_data.csv",
-                              pattern="_clean\\.csv$") {
+                              pattern="_clean\\.csv$",
+                              dedupe_by="gene_accession_id", # choose which column to ensure is unique
+                              keep="first") { # can keep first or last
   # checking input directory actually exists
   if (!dir.exists(in_dir)) stop("Input directory not found: ", in_dir)
   
   # Find all cleaned CSV files and read them in
-  files <- list.files(in_dir, pattern = pattern, full.names=TRUE) # full.names give full path
+  files = list.files(in_dir, pattern = pattern, full.names=TRUE) # full.names give full path
   
   # check if files were found
   if(length(files) == 0) {
@@ -18,15 +20,15 @@ merge_clean_files <- function(in_dir="data/clean",
   
   
   # create an empty list to store each file's data
-  all_data <- list()
+  all_data = list()
   
   for (i in seq_along(files)) {
-    file_name <- basename(files[i])
-    file_path <- files[i]
+    file_name = basename(files[i])
+    file_path = files[i]
     message("Reading [", i, "/", length(files), "]: ", file_name) # progress bar
       
       # Read the CSV
-    df <- tryCatch({
+    df = tryCatch({
       read.csv(file_path, stringsAsFactors = FALSE, na.strings = "")
      }, error = function(e) {
       warning("Failed to read ", file_name, ": ", e$message)
@@ -34,23 +36,49 @@ merge_clean_files <- function(in_dir="data/clean",
     })
     
     # store successful reads
-    if (!is.null(df)) all_data[[length(all_data) + 1]] <- df
+    if (!is.null(df)) all_data[[length(all_data) + 1]] = df
     }
     
   # Remove any NULL entries (failed reads)
-  all_data <- all_data[!sapply(all_data, is.null)]
+  all_data = all_data[!sapply(all_data, is.null)]
     
   if (length(all_data) == 0) {
     stop("No files could be successfully read!") #output for empty directory
     }
     
   # Combine all rows into one data frame
-  merged_df <- do.call(rbind, all_data)
+  merged_df = do.call(rbind, all_data)
     
   message("\nMerged ", nrow(merged_df), " rows from ", length(all_data), " file(s)")
+
+# De-duplicatiom across all files
+  if (!is.null(dedupe_by) && dedupe_by %in% names(merged_df)) {
+    n_before = nrow(merged_df)
     
+    # Remove rows where dedupe_by column is NA
+    na_rows = is.na(merged_df[[dedupe_by]]) | merged_df[[dedupe_by]] == ""
+    if (any(na_rows)) {
+      message("Removing ", sum(na_rows), " rows with missing ", dedupe_by)
+      merged_df = merged_df[!na_rows, ]
+    }
+    
+    # Find duplicates
+    dupes = duplicated(merged_df[[dedupe_by]], fromLast = (keep == "last"))
+    
+    if (any(dupes)) {
+      n_dupes = sum(dupes)
+      message("Removing ", n_dupes, " duplicate rows (keeping ", keep, " occurrence)")
+      merged_df = merged_df[!dupes, ]
+    } else {
+      message("No duplicates found in ", dedupe_by)
+    }
+    
+    n_after = nrow(merged_df)
+    message("Rows: ", n_before, " -> ", n_after, " (removed ", n_before - n_after, ")")
+  }
+  
   # Add warning for failed files
-  n_failed <- length(files) - length(all_data)
+  n_failed = length(files) - length(all_data)
   if (n_failed > 0) {
     message("Warning: ", n_failed, " file(s) could not be read (check warnings above)")
     }
