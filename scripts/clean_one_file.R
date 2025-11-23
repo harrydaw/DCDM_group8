@@ -115,7 +115,7 @@ clean_one_file = function(in_path, # path to file, REQUIRED
   
   if ("gene_accession_id" %in% names(row) && !is.na(row$gene_accession_id)) {
     # uppercase letters, keep digits/colons (e.g. MGI:12345)
-    row$gene_accession_id <- toupper(trimws(row$gene_accession_id))
+    row$gene_accession_id = toupper(trimws(row$gene_accession_id))
   } 
     
   if ("gene_symbol" %in% names(row)) {

@@ -215,16 +215,16 @@ generate_summary = function(df, type_range_report, cat_report, sop) {
   
   #rows failing categorical checks
   if (!is.null(cat_report)) {
-    problematic_rows <- unique(cat_report$row_index)
+    problematic_rows = unique(cat_report$row_index)
   }
   
   #rows failing type/range/length checks
-  problematic_rows <- unique(c(
+  problematic_rows = unique(c(
     problematic_rows,
     rows_with_type_range_issues(df, sop)
   ))
   
-  rows_with_issues <- length(problematic_rows)
+  rows_with_issues = length(problematic_rows)
   
   # Calculate percentages
   pct_rows_clean = round(100 * (total_rows - rows_with_issues) / total_rows, 2) # round percentage of clean rows to two digits
@@ -413,8 +413,8 @@ validate_cleaned = function(
   if (length(allowed_sets)) {
     message("Allowed values found:")
     for (fld in names(allowed_sets)) {
-      vals <- paste(head(allowed_sets[[fld]], 5), collapse = ", ")
-      if (length(allowed_sets[[fld]]) > 5) vals <- paste0(vals, ", ...")
+      vals = paste(head(allowed_sets[[fld]], 5), collapse = ", ")
+      if (length(allowed_sets[[fld]]) > 5) vals = paste0(vals, ", ...")
       message("  - ", fld, ": ", vals)
     }
   } else {
