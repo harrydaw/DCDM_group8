@@ -7,11 +7,11 @@ editor: visual
 
 # DCDM Group 8 Project
 
-This repository contains scripts and documentation for data cleaning, 
-database design, and visualisation of IMPC data for the 7BBG1003 coursework.
+This repository contains scripts and documentation for data cleaning, database design, and visualisation of IMPC data for the 7BBG1003 coursework.
 
 ## Quick Start
-```r
+
+``` r
 # 1. Source all scripts
 source("scripts/clean_all_files.R")
 source("scripts/merge_clean_files.R")
@@ -27,26 +27,26 @@ mutate_after_validation()
 
 ## Documentation
 
-For detailed pipeline explanation, design decisions, and output interpretation, 
-see [docs/pipeline_documentation.html](docs/pipeline_documentation.html)
+For detailed pipeline explanation, design decisions, and output interpretation, see [docs/pipeline_documentation.html](docs/pipeline_documentation.html)
 
 ## Folder Structure
-- `scripts/` - R scripts for data cleaning and processing
-- `data/` - Raw and cleaned data files (Example data stored in repo)
-- `outputs/` - Validation reports and logs
-- `docs/` - Quarto documentation and rendered reports
+
+-   `scripts/` - R scripts for data cleaning and processing
+-   `data/` - Raw and cleaned data files **(Example data stored in repo)**
+-   `outputs/` - Validation reports and logs
+-   `docs/` - Quarto documentation and rendered reports
 
 ## Pipeline Summary
 
-1. **Clean** - Parse and normalise key-value pair files
-2. **Merge** - Consolidate into single dataset with deduplication
-3. **Validate** - Check against IMPC SOP standards
-4. **Mutate** - Remove unfixable violations, quarantine problematic rows
+1.  **Clean** - Parse and normalise key-value pair files
+2.  **Merge** - Consolidate into single dataset with deduplication
+3.  **Validate** - Check against IMPC SOP standards
+4.  **Mutate** - Remove unfixable violations, quarantine problematic rows
 
 Final output: 99%+ clean data ready for analysis
 
 ## Key Outputs
 
-- `data/merged/all_clean_data_mutated.csv` - Final curated dataset
-- `outputs/validation_summary.csv` - Data quality metrics
-- `outputs/mutation_quarantine.csv` - Excluded rows for review
+-   `data/merged/all_clean_data_mutated.csv` - Final curated dataset
+-   `outputs/validation_summary.csv` - Data quality metrics
+-   `outputs/mutation_quarantine.csv` - Excluded rows for review
