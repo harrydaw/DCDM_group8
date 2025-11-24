@@ -1,0 +1,1025 @@
+---
+title: "IMPC Data Cleaning and Validation Pipeline"
+subtitle: "DCDM Group 8 - 7BBG1003 Coursework"
+author: "Harry Woodward"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: show
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: true
+---
+
+# Introduction
+
+This document explains a complete data processing pipeline designed for **IMPC (International Mouse Phenotyping Consortium)** data. The pipeline transforms messy key-value pair files into clean, validated, standardised tabular data ready for analysis.
+
+The entirety of the cleaning scripts are designed to run in base R for maximum portability and reproducibility, with no additional packages or software required.
+
+## Pipeline Overview
+
+The pipeline consists of six major stages:
+
+1.  **Individual File Cleaning** (`clean_one_file.R`) - Processes single files with key-value pairs
+2.  **Batch Processing** (`clean_all_files.R`) - Applies cleaning to multiple files and outputs clean, one-line dataframes
+3.  **Merging** (`merge_clean_files.R`) - Combines cleaned files into one large dataset
+4.  **Metadata Cleaning** (`clean_parameter_procedure.R`) - Processes reference tables
+5.  **Validation** (`validate_merged_data.R`) - Checks data against standards (SOP)
+6.  **Mutation** (`mutate_after_validation.R`) - Removes problematic rows post-validation
+
+## Why This Pipeline?
+
+Real-world biological data is **messy**. This pipeline addresses common data quality issues:
+
+-   Inconsistent formatting (spacing, capitalisation)
+-   Duplicate keys
+-   Missing required fields
+-   Invalid values (out-of-range numbers, typos)
+-   Categorical value variations ("C57BL" vs "C57 BL" vs "c57bl")
+
+------------------------------------------------------------------------
+
+# Stage 1: Individual File Cleaning
+
+## The Problem
+
+Raw IMPC files contain key-value pairs in formats like:
+
+```         
+gene_symbol,Mgst2
+mouse_strain,  C57BL  
+mousr_life_stage, Earlyadult
+pvalue,0.03
+```
+
+Issues include: - Extra whitespace - Duplicate keys - Inconsistent capitalisation - Invalid p-values
+
+## Helper Functions
+
+### Key Normalisation
+
+```{r}
+#| eval: false
+norm_key = function(x) {
+  x = trimws(tolower(x))           # Remove whitespace, lowercase
+  x = gsub("[^a-z0-9]+", "_", x)   # Replace non-alphanumeric with "_"
+  x = gsub("^_+|_+$", "", x)       # Remove edge underscores
+  x
+}
+```
+
+**Why this matters:** Ensures "Gene Symbol", "gene_symbol", and "GENE-SYMBOL" all become "gene_symbol" for consistent merging.
+
+### Value Normalisation
+
+```{r}
+#| eval: false
+norm_value = function(x) {
+  if (is.na(x)) return(NA_character_)
+  x = trimws(x)
+  if (tolower(x) == "na") return(NA_character_)  # Convert literal "NA" to real NA
+  x
+}
+```
+
+**Design choice:** People often type "NA" or "na" as text. This function standardises these to R's `NA_character_`.
+
+### P-value Validation
+
+```{r}
+#| eval: false
+validate_pvalue = function(rec, issues) {
+  if (is.null(rec$pvalue)) return(list(rec = rec, issues = issues))
+  raw = rec$pvalue
+  num = suppressWarnings(as.numeric(raw))
+  bad_num = is.na(num) & !is.na(raw)          # Text instead of number
+  oor = !is.na(num) & (num < 0 | num > 1)     # Out of range [0,1]
+  if (isTRUE(bad_num) || isTRUE(oor)) {
+    issues = c(issues, sprintf("pvalue invalid (%s) -> set NA", raw))
+    rec$pvalue = NA_real_
+  } else {
+    rec$pvalue = num
+  }
+  list(rec = rec, issues = issues)
+}
+```
+
+**Why validate p-values?** P-values must be numeric and within \[0,1\]. Values like "not_significant" or "-0.1" are logged and set to `NA`.
+
+## Main Cleaning Function
+
+```{r}
+#| eval: false
+clean_one_file = function(in_path, out_csv = NULL, out_log = NULL,
+                          expected_keys = c(...)) {
+  
+  # Initialize tracking variables
+  issues = character(0)    # Why character(0)? Creates an empty character vector
+  seen = character(0)      # ready for appending, with explicit type
+  rec = list()             # Stores key-value pairs
+  
+  lines = readLines(in_path, warn = FALSE)
+  
+  # Parse each line
+  for (ln in lines) {
+    parts = strsplit(ln, "[,\t]", perl = TRUE)[[1]]
+    if (length(parts) < 2) next
+    
+    key = norm_key(parts[1])
+    val = norm_value(paste(parts[-1], collapse = " "))
+    
+    # Handle duplicates: keep first, log the rest
+    if (key %in% seen) {
+      issues = c(issues, sprintf("duplicate key ignored: %s", key))
+      next
+    }
+    
+    seen = c(seen, key)
+    rec[[key]] = val
+  }
+  
+  # Log unexpected keys (won't include in output)
+  unexpected = setdiff(names(rec), expected_keys)
+  if (length(unexpected)) {
+    issues = c(issues, sprintf("unexpected keys ignored: %s", 
+                               paste(unexpected, collapse = ", ")))
+  }
+  
+  # Fill missing keys with NA
+  missing = setdiff(expected_keys, names(rec))
+  if (length(missing)) {
+    issues = c(issues, sprintf("missing keys set NA: %s", 
+                               paste(missing, collapse = ", ")))
+    for (k in missing) rec[[k]] = NA_character_
+  }
+  
+  # Validate p-value
+  result = validate_pvalue(rec, issues)
+  rec = result$rec
+  issues = result$issues
+  
+  # Create 1-row data frame in fixed column order
+  row = as.data.frame(as.list(rec[expected_keys]), stringsAsFactors = FALSE)
+  
+  # Canonicalisation (hard-coded)
+  if ("mouse_strain" %in% names(row)) {
+    row$mouse_strain = gsub("\\s+", "", row$mouse_strain)  # Remove all spaces
+  }
+  
+  if ("gene_symbol" %in% names(row)) {
+    row$gene_symbol = cap_first(tolower(row$gene_symbol))  # Title case
+  }
+  
+#  **...**
+  
+  
+  # Write outputs
+  write.csv(row, out_csv, row.names = FALSE, na = "")
+  
+  if (!length(issues)) issues = "OK"
+  log_df = data.frame(file = basename(in_path), issue = issues)
+  write.csv(log_df, out_log, row.names = FALSE, na = "")
+  
+  invisible(list(out_csv = out_csv, out_log = out_log))
+}
+```
+
+### Key Design Decisions
+
+**1. Why `character(0)` instead of `c()` or `NULL`?** - **Type safety:** Pre-declares these will hold strings - **Clearer intent:** Makes code self-documenting - **Consistency:** Prevents accidental type coercion.
+
+**2. Keep first duplicate, not last?** - Assumption: First occurrence is usually correct in sequential data entry - Alternative: Could keep last with `fromLast = TRUE` in `duplicated()`
+
+**3. Hard-coded canonicalisation?** - These are **domain-specific rules** from IMPC - Could be externalised to a config file for flexibility but this Current approach is explicit and traceable to our needs.
+
+## Output Files
+
+After processing `fake_01.csv`:
+
+**Clean CSV** (clean/`fake_01_clean.csv`):
+
+```         
+gene_accession_id,gene_symbol,mouse_strain,mouse_life_stage,parameter_id,pvalue,parameter_name,analysis_id
+MGI:1234567,Mgst2,C57BL,Earlyadult,IMPC_HEM_001_001,0.03,White blood cell count,fake_01
+```
+
+**Log CSV** (outputs/logs/`fake_01_log.csv`):
+
+```         
+file,issue
+fake_01.csv,OK
+```
+
+------------------------------------------------------------------------
+
+# Stage 2: Batch Processing
+
+```{r}
+#| eval: false
+clean_all_files = function(in_dir = "data/raw",
+                            out_csv_dir = "data/clean",
+                            out_log_dir = "outputs/logs",
+                            pattern = "\\.csv$",
+                            expected_keys = c(...)) {
+  
+  files = list.files(in_dir, pattern = pattern, full.names = TRUE)
+  
+  results = list()
+  for (i in seq_along(files)) {
+    file_path = files[i]
+    
+    # Try-catch wrapper for error handling
+    result = tryCatch({
+      clean_one_file(file_path, ...)
+      list(file = basename(file_path), status = "success", error = NA)
+    }, error = function(e) {
+      list(file = basename(file_path), status = "failed", 
+           error = as.character(e))
+    })
+    
+    results[[i]] = result
+  }
+  
+  # Generate summary
+  results_df = do.call(rbind, lapply(results, as.data.frame))
+  n_success = sum(results_df$status == "success")
+  n_failed = sum(results_df$status == "failed")
+  
+  message("\n--- Summary ---")
+  message("Successfully processed: ", n_success, " file(s)")
+  message("Failed: ", n_failed, " file(s)")
+  
+  invisible(results_df)
+}
+```
+
+## Why This Design?
+
+**Error isolation:** One corrupt file doesn't crash the entire batch. Each file is wrapped in `tryCatch()` so failures are logged but processing continues.
+
+**Progress tracking:** Console messages show `[3/10]` progress, useful for large batches.
+
+**Summary CSV:** Timestamped summary file provides audit trail of batch processing.
+
+------------------------------------------------------------------------
+
+# Stage 3: Merging Clean Files
+
+```{r}
+#| eval: false
+merge_clean_files = function(in_dir = "data/clean",
+                             out_file = "data/merged/all_clean_data.csv",
+                             pattern = "_clean\\.csv$",
+                             dedupe_by = "analysis_id",
+                             keep = "first") {
+  
+  files = list.files(in_dir, pattern = pattern, full.names = TRUE)
+  all_data = list()
+  
+  for (i in seq_along(files)) {
+    df = tryCatch({
+      read.csv(files[i], stringsAsFactors = FALSE, na.strings = "")
+    }, error = function(e) {
+      warning("Failed to read ", basename(files[i]), ": ", e$message)
+      return(NULL)
+    })
+    
+    if (!is.null(df)) all_data[[length(all_data) + 1]] = df
+  }
+  
+  merged_df = do.call(rbind, all_data)
+  
+  # Deduplication
+  if (!is.null(dedupe_by) && dedupe_by %in% names(merged_df)) {
+    na_rows = is.na(merged_df[[dedupe_by]]) | merged_df[[dedupe_by]] == ""
+    merged_df = merged_df[!na_rows, ]
+    
+    dupes = duplicated(merged_df[[dedupe_by]], fromLast = (keep == "last"))
+    merged_df = merged_df[!dupes, ]
+  }
+  
+  write.csv(merged_df, out_file, row.names = FALSE, na = "")
+  invisible(merged_df)
+}
+```
+
+## Critical Design Choice at the merging stage: Deduplication (intra-file)
+
+We have alreayd deduplicated rows within individual files but this step makes sure that no two rows in the final dataset will be the same.
+
+**Why deduplicate by `analysis_id`?**
+
+1.  **One record per analysis** in the final dataset
+2.  **First occurrence kept** (assuming chronological file ordering)
+3.  **NA values removed first** (incomplete records excluded)
+
+------------------------------------------------------------------------
+
+# Stage 4: Metadata Cleaning
+
+## Why Separate Metadata Processing?
+
+The IMPC provides **reference tables** that describe parameters and procedures:
+
+-   `IMPC_parameter_description.txt` - What each parameter measures
+-   `IMPC_procedure.txt` - Which procedure each parameter belongs to
+
+These are **tabular data** (not key-value pairs) requiring different processing.
+
+```{r}
+#| eval: false
+clean_parameter_descriptions = function(
+    in_path = "IMPC_parameter_description.txt",
+    out_path = "data/clean/IMPC_parameter_description_clean.csv",
+    titlecase_names = TRUE) {
+  
+  raw = read.table(in_path, header = TRUE, sep = ",", 
+                   stringsAsFactors = FALSE, check.names = FALSE)
+  
+  df = trim_char_cols(raw)  # Remove whitespace from all character columns
+  
+  # Canonicalise IDs
+  df$parameterId = toupper(df$parameterId)
+  
+  # Optional title-casing
+  if (titlecase_names && "name" %in% names(df)) {
+    df$name = cap_first(tolower(df$name))
+  }
+  
+  # Drop rows missing parameterId (the join key)
+  n_missing_key = sum(is.na(df$parameterId) | df$parameterId == "")
+  df = df[!(is.na(df$parameterId) | df$parameterId == ""), , drop = FALSE]
+  
+  # Collapse duplicates (keep first)
+  dup_idx = duplicated(df$parameterId)
+  n_dup = sum(dup_idx)
+  
+  if (n_dup > 0) {
+    # Log which IDs were duplicated
+    dup_ids = df$parameterId[dup_idx]
+    dup_counts = table(dup_ids)
+    dup_log_df = data.frame(id = names(dup_counts),
+                            duplicate_count = as.integer(dup_counts))
+    write.csv(dup_log_df, 
+              sub("\\.csv$", "_duplicates.csv", log_path),
+              row.names = FALSE)
+    
+    df = df[!dup_idx, , drop = FALSE]
+  }
+  
+  write.csv(df, out_path, row.names = FALSE, na = "")
+  invisible(df)
+}
+```
+
+## High Duplicate Rate Warning
+
+```{r}
+#| eval: false
+if (dup_pct > 10) {
+  warning("High duplicate rate (", dup_pct, "%) - verify file")
+}
+```
+
+**Why 10% threshold?** A few duplicates are expected (data entry errors), but \>10% suggests systematic problems: - Incorrect file format - Multiple versions concatenated - Corrupted data
+
+This warning prompts manual verification before continuing.
+
+------------------------------------------------------------------------
+
+# Stage 5: Validation Against Standards
+
+## The Standard operating procedure (SOP)
+
+The `IMPC_SOP.csv` file defines **expected data structure and formatting**:
+
+```         
+dataField,dataType,minValue,maxValue,remarks
+gene_accession_id,string,5,20,Format: MGI:12345
+pvalue,float,0,1,Statistical significance
+mouse_strain,string,3,50,Values are: C57BL6; BALBc; B6J
+```
+
+## Parsing Allowed Values
+
+The SOP stores categorical constraints in various formats:
+
+```{r}
+#| eval: false
+parse_allowed_sets = function(sop) {
+  allowed = vector("list", nrow(sop))
+  names(allowed) = sop$dataField
+  
+  for (i in seq_len(nrow(sop))) {
+    # Check dedicated allowedValues column
+    if ("allowedValues" %in% names(sop)) {
+      av = sop$allowedValues[i]
+      if (!is.na(av) && nzchar(trimws(av))) {
+        vals = trimws(unlist(strsplit(av, ";", fixed = TRUE)))
+        if (length(vals)) {
+          allowed[[i]] = vals
+          next
+        }
+      }
+    }
+    
+    # Fallback: parse from remarks column
+    rm = sop$remarks[i]
+    patterns = c(
+      "(?i).*values\\s+are\\s*:?\\s*(.*)$",        # "Values are:"
+      "(?i).*allowed\\s+values\\s*:?\\s*(.*)$",    # "Allowed values:"
+      "(?i).*valid\\s+values\\s*:?\\s*(.*)$"       # "Valid values:"
+    
+    #  **...**
+      
+      )
+    
+    for (pattern in patterns) {
+      m = regexpr(pattern, rm, perl = TRUE)
+      if (m[1] >= 0) {
+        tail = sub(pattern, "\\1", rm, perl = TRUE)
+        vals = trimws(unlist(strsplit(tail, "[;,]")))
+        vals = vals[nzchar(vals)]
+        if (length(vals)) {
+          allowed[[i]] = vals
+          break
+        }
+      }
+    }
+  }
+  
+  allowed[!vapply(allowed, is.null, logical(1))]
+}
+```
+
+**Design rationale:** Real-world SOPs are inconsistent. This parser:
+
+1.  **Tries dedicated column first** (if exists)
+2.  **Falls back to regex parsing** of remarks column
+3.  **Handles multiple separators** (`;` or `,`)
+4.  **Case-insensitive matching** (`(?i)`)
+
+## Type and Range Validation
+
+```{r}
+#| eval: false
+validate_types_ranges = function(df, sop) {
+  out = list()
+  
+  for (i in seq_len(nrow(sop))) {
+    fld = sop$dataField[i]
+    dtype = tolower(sop$dataType[i])
+    minv = sop$minValue[i]
+    maxv = sop$maxValue[i]
+    
+    if (!fld %in% names(df)) {
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "missing_column_in_data",
+        metric = "count", value = 1
+      )
+      next
+    }
+    
+    col = df[[fld]]
+    
+    if (dtype == "float") {
+      num = suppressWarnings(as.numeric(col))
+      non_numeric = sum(is.na(num) & !is.na(col))
+      out_of_range = sum(!is.na(num) & (num < minv | num > maxv))
+      
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "numeric", 
+        metric = "non_numeric", value = non_numeric
+      )
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "numeric",
+        metric = "out_of_range", value = out_of_range
+      )
+    }
+    else if (dtype == "string") {
+      col_chr = ifelse(is.na(col), "", as.character(col))
+      L = nchar(col_chr, type = "chars")
+      too_short = sum(L < minv & col_chr != "")
+      too_long = sum(L > maxv)
+      blanks = sum(col_chr == "")
+      
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "string_length",
+        metric = "too_short", value = too_short
+      )
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "string_length",
+        metric = "too_long", value = too_long
+      )
+      out[[length(out) + 1]] = data.frame(
+        field = fld, check = "string_length",
+        metric = "blank_or_na", value = blanks
+      )
+    }
+  }
+  
+  do.call(rbind, out)
+}
+```
+
+## Categorical Validation
+
+```{r}
+#| eval: false
+validate_allowed_sets = function(df, allowed_sets) {
+  if (!length(allowed_sets)) return(NULL)
+  
+  rows = list()
+  for (fld in names(allowed_sets)) {
+    if (!fld %in% names(df)) next
+    
+    x = df[[fld]]
+    okset = norm_value(allowed_sets[[fld]])  # Normalise allowed values
+    bad = !is.na(x) & !(norm_value(x) %in% okset)  # Find violations
+    
+    if (any(bad)) {
+      rows[[length(rows) + 1]] = data.frame(
+        field = fld,
+        row_index = which(bad),
+        value = x[bad],
+        issue = "not_in_allowed_set"
+      )
+    }
+  }
+  
+  if (!length(rows)) return(NULL)
+  do.call(rbind, rows)
+}
+```
+
+**Why normalise both sides?** Catches variations like: - "C57BL6" vs "C57BL 6" vs "c57bl6" - "Early adult" vs "earlyadult" vs "EARLY ADULT"
+
+## Standardisation (Critical Step!)
+
+After identifying violations, we **standardise** values to match the SOP exactly:
+
+```{r}
+#| eval: false
+standardise_categoricals = function(df, allowed_sets) {
+  corrections_made = 0
+  corrections_log = list()
+  
+  for (fld in names(allowed_sets)) {
+    if (!fld %in% names(df)) next
+    
+    x = df[[fld]]
+    allowed = allowed_sets[[fld]]
+    
+    # Create lookup: normalised -> proper version
+    lookup = setNames(allowed, norm_value(allowed))
+    
+    for (i in seq_along(x)) {
+      if (is.na(x[i])) next
+      
+      normalised = norm_value(x[i])
+      
+      if (normalised %in% names(lookup)) {
+        if (x[i] != lookup[[normalised]]) {
+          df[[fld]][i] = lookup[[normalised]]
+          corrections_made = corrections_made + 1
+          
+          corrections_log[[length(corrections_log) + 1]] = data.frame(
+            field = fld, row_index = i,
+            original_value = x[i],
+            standardised_value = lookup[[normalised]]
+          )
+        }
+      }
+    }
+  }
+  
+  list(df = df, log = corrections_log)
+}
+```
+
+**Example transformation:**
+
+```         
+Original: "c57 bl  6"
+Standardised: "C57BL6"
+
+Original: "earlyadult"
+Standardised: "Early Adult"
+
+```
+
+Normalises for comparison, completes lookup against allowed values (if they exist) and then saves the exact "allowed value" if a match is made.
+
+**early adult -> earlyadult -> Early adult (saved)**
+
+
+This ensures downstream analyses use **consistent categorical values**.
+
+## Validation Summary Report
+
+```{r}
+#| eval: false
+generate_summary = function(df, type_range_report, cat_report, sop) {
+  total_rows = nrow(df)
+  
+  # Identify all problematic rows
+  problematic_rows = integer(0)
+  
+  if (!is.null(cat_report)) {
+    problematic_rows = unique(cat_report$row_index)
+  }
+  
+  problematic_rows = unique(c(
+    problematic_rows,
+    rows_with_type_range_issues(df, sop)
+  ))
+  
+  rows_with_issues = length(problematic_rows)
+  pct_rows_clean = round(100 * (total_rows - rows_with_issues) / total_rows, 2)
+  
+  summary_df = data.frame(
+    metric = c("total_rows", "rows_with_violations", "percent_rows_clean", ...),
+    value = c(total_rows, rows_with_issues, pct_rows_clean, ...),
+    details = c(...)
+  )
+  
+  summary_df
+}
+```
+
+### Sample Validation Summary
+
+```         
+metric,value,details
+total_rows,450,Number of data rows
+rows_with_violations,23,Rows containing at least one violation
+percent_rows_clean,94.89,Percentage of clean rows
+fields_with_type_violations,2,Fields with type/range/length issues
+total_type_range_violations,8,Total type/range/length violations
+total_categorical_violations,15,Total categorical violations
+```
+
+**Interpretation:** - **94.89% clean** is good but not perfect - **23 rows** need attention - Most issues are **categorical** (15) rather than type errors (8)
+
+------------------------------------------------------------------------
+
+# Stage 6: Post-Validation Mutation
+
+## Why Mutate After Validation?
+
+Some issues **cannot be fixed** through normalisation and this particular script is tailored to our erroneous data specifically.:
+
+1.  **Invalid mouse strains** not in allowed set (typos, discontinued strains)
+2.  **Missing critical fields** that cannot be imputed
+
+Rather than corrupt the dataset, we **quarantine** these rows.
+
+
+
+```{r}
+#| eval: false
+mutate_after_validation = function(
+    standardised_path = "data/merged/all_clean_data__standardised.csv",
+    sop_path = "data/IMPC_SOP.csv",
+    types_path = "outputs/validation_types_ranges.csv",
+    cats_path = "outputs/validation_categoricals.csv",
+    out_mutated = "data/merged/all_clean_data_mutated.csv",
+    out_quarantine = "outputs/mutation_quarantine.csv",
+    drop_missing_lifestage = FALSE) {
+  
+  # Load data and validation reports
+  df = read.csv(standardised_path, ...)
+  cat_report = read.csv(cats_path, ...)
+  
+  # Cleanliness BEFORE
+  summary_before = generate_summary(df, type_range_report, cat_report, sop)
+  pct_clean_before = summary_before$value[
+    summary_before$metric == "percent_rows_clean"
+  ]
+  
+  # Identify rows to drop
+  rows_to_drop = integer(0)
+  
+  # 1. Invalid mouse_strain
+  bad_ms = cat_report[
+    cat_report$field == "mouse_strain" & 
+    cat_report$issue == "not_in_allowed_set", 
+  ]
+  rows_to_drop = union(rows_to_drop, bad_ms$row_index)
+  
+  # 2. Missing mouse_life_stage (optional)
+  if (drop_missing_lifestage) {
+    miss_ls = which(is.na(df$mouse_life_stage) | df$mouse_life_stage == "")
+    rows_to_drop = union(rows_to_drop, miss_ls)
+  }
+  
+  # Create quarantine and mutated datasets
+  quarantine_df = df[rows_to_drop, ]
+  df_mut = df[-rows_to_drop, ]
+  
+  # Cleanliness AFTER
+  type_range_after = validate_types_ranges(df_mut, sop)
+  cat_after = validate_allowed_sets(df_mut, allowed_sets)
+  summary_after = generate_summary(df_mut, type_range_after, cat_after, sop)
+  
+  pct_clean_after = summary_after$value[
+    summary_after$metric == "percent_rows_clean"
+  ]
+  
+  # Write outputs
+  write.csv(df_mut, out_mutated, row.names = FALSE, na = "")
+  write.csv(quarantine_df, out_quarantine, row.names = FALSE, na = "")
+  
+  invisible(list(before = summary_before, after = summary_after))
+}
+```
+
+## Before/After Comparison
+
+**Before Mutation:**
+
+```         
+Rows clean: 94.89%
+Rows with issues: 23 / 450
+```
+
+**After Mutation:**
+
+```         
+Rows clean: 99.77%
+Rows with issues: 1 / 427
+```
+
+**Trade-off:** Lost 23 rows (5.1%) but gained **near-perfect data quality** (99.77%).
+
+------------------------------------------------------------------------
+
+# Complete Pipeline Execution
+
+## Step-by-Step Workflow
+
+```{r}
+#| eval: false
+
+# 1. Source all scripts
+source("scripts/clean_one_file.R")
+source("scripts/clean_all_files.R")
+source("scripts/merge_clean_files.R")
+source("scripts/clean_parameter_procedure.R")
+source("scripts/validate_merged_data.R")
+source("scripts/mutate_after_validation.R")
+
+# 2. Clean individual files
+clean_all_files(
+  in_dir = "data/raw",
+  out_csv_dir = "data/clean",
+  out_log_dir = "outputs/logs"
+)
+
+# 3. Merge cleaned files
+merge_clean_files(
+  in_dir = "data/clean",
+  out_file = "data/merged/all_clean_data.csv",
+  dedupe_by = "gene_accession_id"
+)
+
+# 4. Clean metadata tables
+clean_parameter_descriptions(
+  in_path = "data/IMPC_parameter_description.txt",
+  out_path = "data/clean/IMPC_parameter_description_clean.csv"
+)
+
+clean_procedures(
+  in_path = "data/IMPC_procedure.txt",
+  out_path = "data/clean/IMPC_procedure_clean.csv"
+)
+
+# 5. Validate merged data
+validate_cleaned(
+  cleaned_path = "data/merged/all_clean_data.csv",
+  sop_path = "data/IMPC_SOP.csv",
+  out_types = "outputs/validation_types_ranges.csv",
+  out_cats = "outputs/validation_categoricals.csv",
+  out_summary = "outputs/validation_summary.csv"
+)
+
+# 6. Mutate based on validation results
+mutate_after_validation(
+  standardised_path = "data/merged/all_clean_data__standardised.csv",
+  sop_path = "data/IMPC_SOP.csv",
+  out_mutated = "data/merged/all_clean_data_mutated.csv",
+  out_quarantine = "outputs/mutation_quarantine.csv",
+  drop_missing_lifestage = FALSE
+)
+```
+
+------------------------------------------------------------------------
+
+# Key Outputs and What They Tell You
+
+## 1. Individual Logs (`outputs/logs/`)
+
+**Example: `fake_01_log.csv`**
+
+```         
+file,issue
+fake_01.csv,duplicate key ignored: pvalue
+fake_01.csv,missing keys set NA: analysis_id
+```
+
+**What it means:** File had a duplicate p-value (kept first) and was missing analysis_id (set to NA).
+
+## 2. Batch Processing Summary
+
+**Example: `_SUMMARY_20250323_143022.csv`**
+
+```         
+file,status,error
+fake_01.csv,success,NA
+fake_02.csv,success,NA
+fake_03.csv,failed,Input not found: data/raw/fake_03.csv
+```
+
+**What it means:** 2/3 files processed successfully. File 03 was missing.
+
+## 3. Validation Reports
+
+**Type/Range Report (`validation_types_ranges.csv`):**
+
+```         
+field,check,metric,value
+pvalue,numeric,non_numeric,2
+pvalue,numeric,out_of_range,1
+gene_symbol,string_length,too_short,0
+gene_symbol,string_length,too_long,0
+```
+
+**Categorical Report (`validation_categoricals.csv`):**
+
+```         
+field,row_index,value,issue
+mouse_strain,15,C57 BL,not_in_allowed_set
+mouse_strain,23,c57bl/6,not_in_allowed_set
+mouse_life_stage,42,juvenile,not_in_allowed_set
+```
+
+**What it means:** Rows 15, 23, and 42 have categorical values that don't match the SOP's allowed sets.
+
+## 4. Normalisation Summary
+
+**Example: `normalisation_summary.csv`**
+
+```         
+field,row_index,original_value,standardised_value
+mouse_strain,5,c57bl/6,C57BL/6
+mouse_strain,12,C57 BL / 6,C57BL/6
+mouse_life_stage,18,earlyadult,Early adult
+parameter_name,25,white blood cell count,White blood cell count
+```
+
+**What it means:** These variations were automatically corrected to match SOP standards.
+
+## 5. Validation Summary
+
+**Example: `validation_summary.csv`**
+
+```         
+metric,value,details
+total_rows,450,Number of data rows
+total_fields,9,Number of data columns
+rows_with_violations,23,Rows containing at least one violation
+rows_clean,427,Rows with no violations
+percent_rows_clean,94.89,Percentage of clean rows
+fields_with_type_violations,2,Fields with type/range/length issues
+fields_with_categorical_violations,1,Fields with categorical value issues
+fields_clean,6,Fields with no violations
+percent_fields_clean,66.67,Percentage of clean fields
+total_type_range_violations,15,Total type/range/length violations
+total_categorical_violations,8,Total categorical violations
+missing_expected_fields,0,None
+unexpected_extra_fields,0,None
+```
+
+**Interpretation:** - **94.89% of rows are clean** - Good baseline quality - **66.67% of fields have no violations** - 3 out of 9 fields have issues - **Most violations are type/range errors** (15) rather than categorical (8) - **No structural issues** - all expected fields present, no unexpected extras
+
+## 6. Quarantine File
+
+**Example: `mutation_quarantine.csv`**
+
+```         
+mutation_issue,row_index_original,gene_accession_id,gene_symbol,mouse_strain,...
+bad_mouse_strain,15,MGI:1234567,Mgst2,InvalidStrain,...
+bad_mouse_strain,23,MGI:7654321,Satb2,XYZ123,...
+missing_mouse_life_stage,42,MGI:9876543,Pax6,C57BL6,...
+```
+
+**What it means:** These rows were removed from the final dataset. You can: - Manually correct and re-import them - Contact data providers about issues - Document exclusions in your methods section
+
+------------------------------------------------------------------------
+
+# Design Philosophy and Best Practices
+
+## 1. Separation of Concerns
+
+Each script has **one primary responsibility**:
+
+| Script                        | Responsibility                         |
+|-------------------------------|----------------------------------------|
+| `clean_one_file.R`            | Key-value parsing and normalisation    |
+| `clean_all_files.R`           | Batch orchestration and error handling |
+| `merge_clean_files.R`         | Deduplication and consolidation        |
+| `clean_parameter_procedure.R` | Metadata table processing              |
+| `validate_merged_data.R`      | Quality assessment against standards   |
+| `mutate_after_validation.R`   | Final data curation                    |
+
+**Why this matters:** Each script can be tested, debugged, and modified independently.
+
+## 2. Defensive Programming
+
+### Type Safety
+
+```{r}
+#| eval: false
+issues = character(0)  # NOT c() or NULL
+```
+
+**Rationale:** Explicit type declaration prevents silent coercion bugs.
+
+### Null Checks
+
+```{r}
+#| eval: false
+if (!file.exists(in_path)) stop("Input not found: ", in_path)
+if (!length(lines)) stop("File is empty: ", in_path)
+```
+
+**Rationale:** Fail fast with informative errors rather than cryptic crashes later.
+
+### Error Wrapping
+
+```{r}
+#| eval: false
+result = tryCatch({
+  clean_one_file(file_path, ...)
+  list(file = file_name, status = "success", error = NA)
+}, error = function(e) {
+  list(file = file_name, status = "failed", error = as.character(e))
+})
+```
+
+**Rationale:** One bad file shouldn't crash batch processing of 1000s of  files.
+
+## 3. Audit Trail
+
+Every transformation is logged:
+
+-   **Individual logs** (`fake_01_log.csv`) - Issues per file
+-   **Batch summaries** (`_SUMMARY_20250323_143022.csv`) - Processing outcomes
+-   **Duplicate logs** (`IMPC_parameter_description_duplicates.csv`) - What was collapsed
+-   **Normalisation logs** (`normalisation_summary.csv`) - What was changed
+-   **Quarantine logs** (`mutation_quarantine.csv`) - What was excluded
+
+**Why this matters:** Reproducibility and regulatory compliance. You can trace any data point back to its source.
+
+## 4. Data Preservation
+
+The pipeline **never overwrites original data**:
+
+```         
+data/
+  raw/              # Original untouched files
+  clean/            # Cleaned versions
+  merged/           # Consolidated datasets
+    all_clean_data.csv              # After merging
+    all_clean_data_standardised.csv # After normalisation
+    all_clean_data_mutated.csv      # Final curated version
+```
+
+**Rationale:** Can always re-run pipeline from scratch or investigate issues in raw data.
+
+------------------------------------------------------------------------
+
+# Conclusion
+
+This pipeline demonstrates **data engineering** for messy real-world data:
+
+1.  **Robust parsing** of heterogeneous key-value formats
+2.  **Defensive programming** with comprehensive error handling
+3.  **Flexible validation** against evolving standards
+4.  **Intelligent normalisation** without destroying information
+5.  **Complete audit trail** for reproducibility
+6.  **Clear separation of concerns** for maintainability
+
+The result: **99+% clean data** ready for statistical analysis, with full documentation of all transformations and exclusions.
+
+**For a complete view of each function, please review the individual files in "scripts/"**
+
+------------------------------------------------------------------------
+

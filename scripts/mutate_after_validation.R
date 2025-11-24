@@ -51,7 +51,7 @@ mutate_after_validation = function(
   rows_to_drop = integer(0)
   reasons = list()
   
-  # 1) Drop rows with bad mouse_strain (not in allowed set)
+  #Drop rows with bad mouse_strain (not in allowed set)
   if (!is.null(cat_report)) {
     bad_ms = cat_report[
       cat_report$field == "mouse_strain" & cat_report$issue == "not_in_allowed_set",
@@ -69,7 +69,7 @@ mutate_after_validation = function(
     message("No categorical report found; cannot identify bad mouse_strain rows from logs.")
   }
   
-  # 2) Optionally drop rows with missing mouse_life_stage
+  #Optionally drop rows with missing mouse_life_stage
   if (drop_missing_lifestage && "mouse_life_stage" %in% names(df)) {
     miss_ls = which(is.na(df$mouse_life_stage) | df$mouse_life_stage == "")
     if (length(miss_ls)) {
@@ -85,9 +85,9 @@ mutate_after_validation = function(
   rows_to_drop = sort(unique(rows_to_drop))
   message("\nTotal rows flagged for removal: ", length(rows_to_drop))
   
-  # ---------------------------
+  # =======================================
   # Build quarantine + mutated data
-  # ---------------------------
+  # =======================================
   quarantine_df = NULL
   if (length(rows_to_drop) > 0) {
     quarantine_df = df[rows_to_drop, , drop = FALSE]
@@ -114,10 +114,9 @@ mutate_after_validation = function(
   }
   
   message("Rows remaining after mutation: ", nrow(df_mut))
-  
-  # ---------------------------
+  # =========================================
   # Recalculate cleanliness AFTER mutation
-  # ---------------------------
+  # ========================================
   # Re-run validations on mutated data
   message("\nRecomputing validation on mutated data...")
   type_range_after = validate_types_ranges(df_mut, sop)
@@ -133,9 +132,7 @@ mutate_after_validation = function(
   message(sprintf("Rows with issues: %d / %d",
                   rows_issues_after, nrow(df_mut)))
   
-  # ---------------------------
   # Write outputs
-  # ---------------------------
   dir.create(dirname(out_mutated), recursive = TRUE, showWarnings = FALSE)
   write.csv(df_mut, out_mutated, row.names = FALSE, na = "")
   message("\nMutated data written to: ", out_mutated)

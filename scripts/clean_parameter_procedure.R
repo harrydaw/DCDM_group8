@@ -9,9 +9,9 @@
 # - Drop rows with missing IDs
 # - Collapse duplicates by ID (keep first), log counts
 
-# ============================
+# ===================
 # Shared helpers
-# ============================
+# ===================
 
 cap_first = function(x) {
   ifelse(
@@ -32,9 +32,9 @@ trim_char_cols = function(df) {
   write.csv(log_df, path, row.names = FALSE, na = "")
 }
 
-# ============================
-# 1. Parameter descriptions
-# ============================
+# =========================
+# Parameter descriptions
+# ========================
 
 clean_parameter_descriptions = function(
     in_path        = "IMPC_parameter_description.txt",
@@ -159,9 +159,9 @@ clean_parameter_descriptions = function(
   invisible(df)
 }
 
-# ============================
-# 2. Procedures
-# ============================
+# ======================
+# Procedures
+# ======================
 
 clean_procedures = function(
     in_path        = "IMPC_procedure.txt",
@@ -208,7 +208,7 @@ clean_procedures = function(
   # Canonicalise numeric ID column as character (for easier joining)
   df[[key_col]] = as.character(df[[key_col]])
   
-  # Optional: titlecase procedure name
+  # optional titlecasing of procedure name
   if (titlecase_names && name_col %in% names(df)) {
     df[[name_col]] = cap_first(tolower(df[[name_col]]))
   }
