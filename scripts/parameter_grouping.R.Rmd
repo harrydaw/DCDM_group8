@@ -1,0 +1,270 @@
+---
+title: "DCDM -Grouping parameters"
+output: html_document
+date: "2025-11-16"
+---
+#Create a vector of all 161 parameters
+```{r}
+parameters <- c(
+"12kHz-evoked ABR Threshold",
+"18kHz-evoked ABR Threshold",
+"24kHz-evoked ABR Threshold",
+"30kHz-evoked ABR Threshold",
+"6kHz-evoked ABR Threshold",
+"Activity (body position)",
+"Alanine aminotransferase",
+"Albumin",
+"Alkaline phosphatase",
+"Alpha-amylase",
+"Aortic diameter (Dao)",
+"Area under glucose response curve",
+"Aspartate aminotransferase",
+"BMC/Body weight",
+"Body length",
+"Bone Area",
+"Bone Mineral Content",
+"Bone Mineral Content (excluding skull)",
+"Bone Mineral Density (excluding skull)",
+"Brain weight",
+"Branchial arch morphology",
+"Breath rate during sleep mean",
+"Center distance travelled",
+"Center permanence time",
+"Click-evoked ABR threshold",
+"Coat - color - abdomen",
+"Coat - color - back",
+"Coat - color pattern - back",
+"Coat colouration",
+"Coat - hair distribution - back",
+"Coat - hair texture / appearance - abdomen",
+"Coat - hair texture / appearance - back",
+"Coat - hair texture / appearance - head",
+"Conditioning Baseline % Freezing Time",
+"Cornea",
+"Corneal vascularization",
+"Craniofacial morphology",
+"Creatine kinase",
+"Dark sleep bout lengths mean",
+"Delayed embryonic development",
+"Difference in Conditioning Post-shock and Conditioning Baseline % Freezing",
+"Difference in Context and Conditioning Baseline % Freezing",
+"Difference in Cue Tone and Cue Baseline % Freezing",
+"Distance travelled - total",
+"Edema",
+"Embryo Size",
+"Embryo turning",
+"Eye Hemorrhage or Blood Presence",
+"Eyelid morphology",
+"Fasted blood glucose concentration",
+"Fat/Body weight",
+"Fat mass",
+"Fat Mass",
+"Forelimb and hindlimb grip strength measurement mean",
+"Forelimb and hindlimb grip strength normalised against body weight",
+"Forelimb grip strength measurement mean",
+"Forelimb grip strength normalised against body weight",
+"Fructosamine",
+"Fusion of vertebrae",
+"Global prepulse inhibition",
+"Glucose",
+"Glucose response AUC",
+"HDL-cholesterol",
+"Heart looping",
+"Heart morphology",
+"Heart weight",
+"Hematocrit",
+"Hemoglobin",
+"Initial response to glucose challenge",
+"Kyphosis",
+"Large Unstained Cell (LUC) count",
+"Latency to immobility",
+"Lean/Body weight",
+"Lean mass",
+"Lean Mass",
+"Left anterior chamber depth",
+"Left corneal thickness",
+"Left total retinal thickness",
+"Left vitreous humour thickness",
+"Lens",
+"Lens Opacity",
+"Limb grasp",
+"Locomotor activity",
+"Lordosis",
+"Lower teeth appearance",
+"Lymphocyte cell count",
+"Maxilla/Pre-maxilla",
+"Mean cell hemoglobin concentration",
+"Mean cell volume",
+"Mean corpuscular hemoglobin",
+"Mean platelet volume",
+"Mean right eye lens density",
+"Microphthalmia",
+"Neural tube morphology",
+"Number of leukocytes",
+"Optic Disc",
+"Optic vesicle morphology",
+"Pelvis",
+"Percentage center movement time",
+"Percentage center time",
+"Periphery average speed",
+"Periphery distance travelled",
+"Periphery permanence time",
+"Periphery resting time",
+"Persistence of hyaloid vascular system",
+"Phosphorus",
+"Placenta Morphology",
+"Platelet count",
+"Potassium",
+"PP2 + pulse startle magnitude",
+"PP3 + pulse startle magnitude",
+"PP3 startle magnitude",
+"% Pre-pulse inhibition - Global",
+"Prepulse inhibition - PP4",
+"% Pre-pulse inhibition - PPI1",
+"% Pre-pulse inhibition - PPI2",
+"% Pre-pulse inhibition - PPI3",
+"% Pre-pulse inhibition - PPI4",
+"QRS",
+"Red blood cell count",
+"Red blood cell distribution width",
+"Respiratory Exchange Ratio",
+"Response amplitude - S",
+"Retina (combined)",
+"Retinal Blood Vessels",
+"Right kidney weight",
+"Right lung weight",
+"Right vitreous humor thickness",
+"Shape of ribs",
+"Shape of spine",
+"Shape of vertebrae",
+"Skin Appearance",
+"Skull shape",
+"Sleep bout lengths mean",
+"Sleep light phase percent",
+"Snout morphology",
+"Snout size",
+"Sodium",
+"Somite Morphology",
+"Spleen weight",
+"Startle response",
+"T cell CD4+ percentage",
+"Teeth",
+"Tibia length",
+"Time mobile dark side",
+"Total bilirubin",
+"Total cholesterol",
+"Total holepokes",
+"Total protein",
+"Treg cells - % of live leukocytes (Panel A)",
+"Tremor",
+"Triglycerides",
+"Urea (Blood Urea Nitrogen - BUN)",
+"Visceral yolk sac morphology",
+"Vitreous",
+"Vocalization",
+"Weight",
+"White blood cell count",
+"Whole arena average speed",
+"Whole arena resting time",
+"Zygomatic bone"
+)
+
+```
+
+#Create vector for group assignement 
+```{r}
+groups <- rep(NA, length(parameters))
+```
+
+#Assignment of each parametr to a group 
+```{r}
+# Brain and neurological
+groups[grepl("PP|prepulse|startle|ABR|freezing|latency|immobility|conditioning|vocal|tremor|sleep light phase|% Pre-pulse inhibition - Global|Response amplitude - S",
+             parameters, ignore.case = TRUE)] <- "Brain"
+
+# Behaviour and motor function
+groups[grepl("distance|locomotor|holepoke|movement|activity|centre|center|permanence|arena|speed|resting|time mobile|grip|limb grasp|sleep bout",
+             
+             parameters, ignore.case = TRUE)] <- "Behaviour"
+
+#Weight and body composition
+groups[grepl("weight$|weight |mass$|fat/|fat |lean|BMC/|fat mass|lean mass|brain weight|organ weight",
+             parameters, ignore.case = TRUE)] <- "Weight"
+
+#Skeleton
+groups[grepl("skull|bone|rib|spine|vertebrae|morphology|shape|teeth|snout|craniofacial|pelvis|maxilla|zygomatic|length|tibia|body length|Kyphosis|Lordosis",
+             
+             parameters, ignore.case = TRUE)] <- "Skeleton"
+
+#Developmental
+groups[grepl("embryo|somite|yolk|placenta|neural tube|hyaloid|development|heart looping|branchial",
+             
+             parameters, ignore.case = TRUE)] <- "Developmental"
+
+#Imaging and eyes
+groups[grepl("retina|vitreous|optic|eye|cornea|lens|ophthalm|microphthalmia|lens opacity|eye hemorrhage|Left anterior chamber depth",
+             
+             parameters, ignore.case = TRUE)] <- "Imaging"
+
+#Blood
+groups[grepl("alt|ast|albumin|alkaline|amylase|aminotransferase|glucose|cholesterol|triglyceride|bilirubin|urea|protein|sodium|potassium|phosphorus|fructosamine|hemat|hemoglob|rbc|wbc|platelet|leukocyte|cell count|mean corpuscular|Red blood cell distribution width|Mean cell volume",
+             
+             parameters, ignore.case = TRUE)] <- "Blood"
+
+#Immune
+groups[grepl("lymphocyte|T cell|Treg|leukocyte|immune|CD4|LUC",
+             
+             parameters, ignore.case = TRUE)] <- "Immune"
+
+#Cardiovascular
+groups[grepl("heart|aortic|QRS|artery|cardio",
+             
+             parameters, ignore.case = TRUE)] <- "Cardiovascular"
+
+#Metabolism
+groups[grepl("glucose|fructosamine|triglycerides|cholesterol|RER|glucose response|area under glucose response|Creatine kinase", 
+             
+             parameters, ignore.case = TRUE)] <- "Metabolism"
+
+#Physiology
+groups[grepl("breath rate|edema|skin appearance|respiratory", 
+             
+             parameters, ignore.case = TRUE)] <- "Physiology"
+
+#Coat
+groups[grepl("Coat", parameters, ignore.case = TRUE)] <- "Coat"
+
+
+# Assign remaining ungrouped parameters to Miscellaneous
+groups[is.na(groups)] <- "Miscellaneous"
+
+```
+
+#Combine into a dataframe
+```{r}
+parameter_groups <- data.frame(
+  Parameter = parameters,
+  Group = groups,
+  stringsAsFactors = FALSE
+)
+```
+
+#visualise parameters and their groupings
+```{r}
+View(parameter_groups)
+```
+
+#visulaise how many parameters in each grouping
+```{r}
+table(groups)
+```
+
+#saves data into a csv file
+```{r}
+write.csv(parameter_groups, "parameter_groups.csv", row.names = FALSE)
+```
+
+#confirms a csv file exists 
+```{r}
+cat("CSV file 'parameters_groupings.csv' created successfully!\n")
+```
