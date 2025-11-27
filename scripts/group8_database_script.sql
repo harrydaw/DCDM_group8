@@ -1,6 +1,6 @@
 
-create database if not exists impc_db;
-use impc_db;
+create database if not exists database8;
+use database8;
 
 set foreign_key_checks = 0;
 
@@ -84,14 +84,14 @@ drop table if exists parameter_groups;
 create table parameter_groups(
 parameter_group_id int primary key auto_increment,
 group_name varchar(50) not null
-); 
+);
 
 drop table if exists parameter;
 create table parameter(
 parameter_id varchar(25) not null primary key,
-parameter_name varchar(255) not null, 
+parameter_name varchar(255) not null,
 parameter_description text,
-parameter_description_name varchar(255), 
+parameter_description_name varchar(255),
 impcParameterOrigID INT unique null
 );
 
@@ -173,8 +173,8 @@ select distinct
     pst.impcParameterOrigId,
     pst.description
 from staging_table st
-LEFT JOIN parameters_staging_table pst
-    ON st.parameter_id = pst.parameterId;
+left join parameters_staging_table pst
+    on st.parameter_id = pst.parameterId;
 
 -- insert information into parameter-group joining table
 insert into parameter_group_join (parameter_id, parameter_group_id)
@@ -205,8 +205,8 @@ select distinct
     pst.impcParameterOrigId
 from procedures_staging_table pst
 join procedures p on p.procedure_name = pst.procedure_name
-INNER JOIN parameter pr
-    ON pr.impcParameterOrigID = pst.impcParameterOrigId;
+inner join parameter pr
+    on pr.impcParameterOrigID = pst.impcParameterOrigId;
 
 
 -- insert information into analysis table
@@ -230,49 +230,3 @@ drop table if exists procedures_staging_table;
 drop table if exists parameter_groups_staging;
 
 set foreign_key_checks = 1;
-
--- query to find related information for genes of interest
-SELECT
-    g.gene_accession_id,
-    g.gene_symbol,
-    a.analysis_id,
-    a.pvalue,
-    m.mouse_strain,
-    m.mouse_life_stage,
-    p.parameter_id,
-    p.parameter_name,
-    p.parameter_description_name AS parameter_description,
-    pr.procedure_name,
-    pr.isMandatory,
-    pr.description AS procedure_description,
-    -- aggregate all linked diseases into a single string
-    GROUP_CONCAT(DISTINCT d.disease_name SEPARATOR ', ') AS linked_diseases,
-    -- aggregate all parameter groups into a single string
-    GROUP_CONCAT(DISTINCT pg.group_name SEPARATOR ', ') AS parameter_groups_list
-FROM analysis a
-JOIN gene g
-    ON a.gene_accession_id = g.gene_accession_id
-LEFT JOIN gene_disease_join gdj
-    ON g.gene_accession_id = gdj.gene_accession_id
-LEFT JOIN disease d
-    ON gdj.doid = d.doid
-JOIN parameter p
-    ON a.parameter_id = p.parameter_id
-LEFT JOIN parameter_group_join pgj
-    ON p.parameter_id = pgj.parameter_id
-LEFT JOIN parameter_groups pg
-    ON pgj.parameter_group_id = pg.parameter_group_id
-LEFT JOIN procedure_parameter pp
-    ON p.impcParameterOrigID = pp.impcParameterOrigID
-LEFT JOIN procedures pr
-    ON pp.procedure_id = pr.procedure_id
-JOIN mouse m
-    ON a.mouse_id = m.mouse_id
-WHERE g.gene_symbol IN ('Arr3', 'Mon1a', 'Myo1a', 'Prss21')
--- group all unique fields to collapse the aggregated fields
-GROUP BY
-    g.gene_accession_id, g.gene_symbol, a.analysis_id, a.pvalue,
-    m.mouse_strain, m.mouse_life_stage, p.parameter_id, p.parameter_name,
-    p.parameter_description_name, pr.procedure_name, pr.isMandatory, pr.description
-ORDER BY
-    g.gene_accession_id, p.parameter_id, pr.procedure_name;
